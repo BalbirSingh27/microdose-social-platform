@@ -3,5 +3,7 @@ uvicorn[standard]
 python-dotenv
 httpx
 pydantic
+requests
+
 
 
