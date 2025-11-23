@@ -2,7 +2,7 @@
 import requests
 from datetime import datetime, timezone
 
-from supabase_client import supabase
+from app.supabase_client import supabase
 
 REDDIT_SEARCH_URL = "https://www.reddit.com/search.json"
 HEADERS = {"User-Agent": "microdose-mcrdse-scraper/0.1 by balbir"}
