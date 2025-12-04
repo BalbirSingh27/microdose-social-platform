@@ -18,7 +18,7 @@ app = FastAPI(
 # Allow frontend (localhost:3000 + any others) to call the API
 origins = [
     "http://localhost:3000",
-    "https://mcrdse-api.onrender.com",  # optional
+    "https://microdose-social-platform.vercel.app",
 ]
 
 app.add_middleware(
