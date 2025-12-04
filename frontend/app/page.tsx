@@ -21,8 +21,8 @@ type SubredditInsight = {
 };
 
 // Base URL for backend API
-const API_BASE_URL =
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://mcrdse-api.onrender.com";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://mcrdse-api.onrender.com";
 
 /**
  * Aggregate subreddit-level insights from raw posts
