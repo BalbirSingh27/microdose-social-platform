@@ -108,14 +108,14 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* No results message */}
+      {/* No results */}
       {hasSearched && !loading && results.length === 0 && !error && (
         <p className="text-sm text-gray-500">
           No results found for <span className="font-semibold">{keyword}</span>.
         </p>
       )}
 
-      {/* Results grid */}
+      {/* Results */}
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {results.map((post) => (
           <article key={post.id} className="rounded-2xl border p-4">
