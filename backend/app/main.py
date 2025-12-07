@@ -27,7 +27,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 # ------------------------------------------------------------
 # Health + demo
 # ------------------------------------------------------------
@@ -43,7 +42,6 @@ async def health_check():
 @app.get("/hello", tags=["demo"])
 async def hello(name: str = "world"):
     return {"message": f"Hello, {name}!"}
-
 
 # ------------------------------------------------------------
 # Supabase test
@@ -85,7 +83,6 @@ async def supabase_test():
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
-
 
 # ------------------------------------------------------------
 # Main Supabase Reddit endpoints
@@ -140,21 +137,33 @@ async def search_reddit_posts(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 # ------------------------------------------------------------
-# Scraping
+# Scraping (GET + POST) so you can hit it from browser
 # ------------------------------------------------------------
 
-@app.post("/scrape/reddit")
-def scrape_reddit(q: str = "ai automation", limit: int = 20):
+@app.api_route("/scrape/reddit", methods=["GET", "POST"], tags=["scrape"])
+async def scrape_reddit(
+    q: str = Query("microdosing", description="Reddit search query / keyword"),
+    limit: int = Query(50, ge=1, le=200, description="Number of posts to fetch"),
+):
     """
     Trigger Reddit scraping + store into Supabase.
+
+    Example (browser):
+      https://mcrdse-api.onrender.com/scrape/reddit?q=microdosing&limit=50
     """
-    posts = fetch_reddit_posts(q, limit)
-    result = store_posts_in_supabase(posts)
-    return {
-        "status": "ok",
-        "query": q,
-        "limit": limit,
-        "inserted": result["inserted"],
-    }
+    try:
+        posts = fetch_reddit_posts(q, limit)
+        result = store_posts_in_supabase(posts)
+
+        # result["inserted"] is from your existing helper
+        inserted = result.get("inserted", len(posts))
+
+        return {
+            "status": "ok",
+            "query": q,
+            "limit": limit,
+            "inserted": inserted,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
