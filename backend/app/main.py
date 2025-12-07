@@ -27,6 +27,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # ------------------------------------------------------------
 # Health + demo
 # ------------------------------------------------------------
@@ -42,6 +43,7 @@ async def health_check():
 @app.get("/hello", tags=["demo"])
 async def hello(name: str = "world"):
     return {"message": f"Hello, {name}!"}
+
 
 # ------------------------------------------------------------
 # Supabase test
@@ -83,6 +85,7 @@ async def supabase_test():
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
 
 # ------------------------------------------------------------
 # Main Supabase Reddit endpoints
@@ -137,32 +140,33 @@ async def search_reddit_posts(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # ------------------------------------------------------------
-# Scraping
+# Scraping (now supports GET *and* POST)
 # ------------------------------------------------------------
 
-def _scrape_and_store(q: str, limit: int):
-    posts = fetch_reddit_posts(q, limit)
-    result = store_posts_in_supabase(posts)
-    return {
-        "status": "ok",
-        "query": q,
-        "limit": limit,
-        "inserted": result["inserted"],
-    }
+from fastapi import Body
 
-@app.post("/scrape/reddit", tags=["scraper"])
-def scrape_reddit_post(q: str = "ai automation", limit: int = 20):
+@app.api_route("/scrape/reddit", methods=["GET", "POST"], tags=["scraper"])
+def scrape_reddit(
+    q: str = Query("ai automation", description="Search query keyword"),
+    limit: int = Query(20, ge=1, le=200, description="Number of posts to fetch"),
+):
     """
-    Trigger Reddit scraping + store into Supabase via POST.
-    """
-    return _scrape_and_store(q, limit)
+    Trigger Reddit scraping + store into Supabase.
 
-
-@app.get("/scrape/reddit", tags=["scraper"])
-def scrape_reddit_get(q: str = "ai automation", limit: int = 20):
+    - You can call this from the browser with:
+      GET https://mcrdse-api.onrender.com/scrape/reddit?q=microdosing&limit=50
+    - Or from curl/postman as POST with the same query params.
     """
-    Same as POST, but allows triggering from browser address bar.
-    NOTE: only use manually / admin use, not public UI.
-    """
-    return _scrape_and_store(q, limit)
+    try:
+        posts = fetch_reddit_posts(q, limit)
+        result = store_posts_in_supabase(posts)
+        return {
+            "status": "ok",
+            "query": q,
+            "limit": limit,
+            "inserted": result["inserted"],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
