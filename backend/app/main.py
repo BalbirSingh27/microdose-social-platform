@@ -1,12 +1,10 @@
-
 from .reddit_scraper import fetch_reddit_posts, store_posts_in_supabase
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from ..supabase_client import supabase
 import os
 import requests
 from dotenv import load_dotenv
-
 
 load_dotenv()
 
@@ -30,6 +28,10 @@ app.add_middleware(
 )
 
 
+# ------------------------------------------------------------
+# Health + demo
+# ------------------------------------------------------------
+
 @app.get("/", tags=["health"])
 async def health_check():
     return {
@@ -43,7 +45,10 @@ async def hello(name: str = "world"):
     return {"message": f"Hello, {name}!"}
 
 
-# NEW SUPABASE TEST ENDPOINT
+# ------------------------------------------------------------
+# Supabase test
+# ------------------------------------------------------------
+
 @app.get("/supabase-test", tags=["supabase"])
 async def supabase_test():
     """
@@ -82,7 +87,8 @@ async def supabase_test():
         return {"status": "error", "message": str(e)}
 
 
-# 🚀 MAIN SUPABASE REDDIT ENDPOINT
+# ------------------------------------------------------------
+# Main Supabase Reddit endpoints
 # ------------------------------------------------------------
 
 @app.get("/supabase/reddit_posts", tags=["supabase"])
@@ -103,8 +109,47 @@ async def get_reddit_posts(limit: int = 100):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.get("/supabase/reddit_posts/search", tags=["supabase"])
+async def search_reddit_posts(
+    keyword: str = Query(..., min_length=1),
+    limit: int = 100,
+):
+    """
+    Search reddit_posts by keyword in title or selftext.
+    Frontend will call this to support keyword search.
+    """
+    try:
+        pattern = f"%{keyword}%"
+
+        response = (
+            supabase
+            .table("reddit_posts")
+            .select("*")
+            # Search in both title and selftext columns
+            .or_(f"title.ilike.{pattern},selftext.ilike.{pattern}")
+            .limit(limit)
+            .execute()
+        )
+
+        return {
+            "keyword": keyword,
+            "results": response.data,
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ------------------------------------------------------------
+# Scraping
+# ------------------------------------------------------------
+
 @app.post("/scrape/reddit")
 def scrape_reddit(q: str = "ai automation", limit: int = 20):
+    """
+    Trigger Reddit scraping + store into Supabase.
+    """
     posts = fetch_reddit_posts(q, limit)
     result = store_posts_in_supabase(posts)
     return {
