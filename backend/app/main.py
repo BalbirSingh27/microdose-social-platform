@@ -13,10 +13,9 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# ------------------------------------------------------------
-# CORS
-# ------------------------------------------------------------
-
+# -------------------------------------------------------------------
+# CORS – allow frontend to call the API
+# -------------------------------------------------------------------
 origins = [
     "http://localhost:3000",
     "https://microdose-social-platform.vercel.app",
@@ -30,11 +29,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# ------------------------------------------------------------
+# -------------------------------------------------------------------
 # Health + demo
-# ------------------------------------------------------------
-
+# -------------------------------------------------------------------
 @app.get("/", tags=["health"])
 async def health_check():
     return {
@@ -47,11 +44,9 @@ async def health_check():
 async def hello(name: str = "world"):
     return {"message": f"Hello, {name}!"}
 
-
-# ------------------------------------------------------------
+# -------------------------------------------------------------------
 # Supabase test
-# ------------------------------------------------------------
-
+# -------------------------------------------------------------------
 @app.get("/supabase-test", tags=["supabase"])
 async def supabase_test():
     """
@@ -89,11 +84,9 @@ async def supabase_test():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-
-# ------------------------------------------------------------
+# -------------------------------------------------------------------
 # Main Supabase Reddit endpoints
-# ------------------------------------------------------------
-
+# -------------------------------------------------------------------
 @app.get("/supabase/reddit_posts", tags=["supabase"])
 async def get_reddit_posts(limit: int = 100):
     """
@@ -108,7 +101,6 @@ async def get_reddit_posts(limit: int = 100):
             .execute()
         )
         return response.data
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -120,7 +112,7 @@ async def search_reddit_posts(
 ):
     """
     Search reddit_posts by keyword in title or selftext.
-    Frontend will call this to support keyword search.
+    Frontend calls this to support keyword search.
     """
     try:
         pattern = f"%{keyword}%"
@@ -139,34 +131,31 @@ async def search_reddit_posts(
             "keyword": keyword,
             "results": response.data,
         }
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# ------------------------------------------------------------
-# Scraping – can be triggered via GET (browser) or POST (code)
-# ------------------------------------------------------------
-
-@app.api_route("/scrape/reddit", methods=["GET", "POST"], tags=["scraping"])
+# -------------------------------------------------------------------
+# Scraping – NOW GET (so browser can call it)
+# -------------------------------------------------------------------
+@app.get("/scrape/reddit", tags=["scrape"])
 async def scrape_reddit(
-    q: str = Query("ai automation", description="Search keyword for Reddit"),
-    limit: int = Query(20, ge=1, le=200),
+    q: str = Query("microdosing", description="Keyword or subreddit search"),
+    limit: int = Query(50, ge=1, le=200),
 ):
     """
     Trigger Reddit scraping + store into Supabase.
-
-    Example (browser):
+    You can call this from the browser:
     https://mcrdse-api.onrender.com/scrape/reddit?q=microdosing&limit=50
     """
     try:
         posts = fetch_reddit_posts(q, limit)
         result = store_posts_in_supabase(posts)
+
         return {
             "status": "ok",
             "query": q,
             "limit": limit,
-            "inserted": result.get("inserted", 0),
+            "inserted": result["inserted"],
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
