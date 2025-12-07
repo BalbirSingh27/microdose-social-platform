@@ -1,0 +1,21 @@
+# Ignore environment files
+.env
+backend/.env
+frontend/.env
+
+# Ignore notebook checkpoints
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# Ignore node modules
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Ignore extra lockfiles we don't want
+backend/package-lock.json
+package-lock.json
+
+# Ignore Next.js build output
+.next/
+frontend/.next/
