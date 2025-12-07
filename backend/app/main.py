@@ -13,9 +13,7 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# -------------------------------------------------------------------
-# CORS – allow frontend to call the API
-# -------------------------------------------------------------------
+# Allow frontend (localhost:3000 + any others) to call the API
 origins = [
     "http://localhost:3000",
     "https://microdose-social-platform.vercel.app",
@@ -29,9 +27,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# -------------------------------------------------------------------
+# ------------------------------------------------------------
 # Health + demo
-# -------------------------------------------------------------------
+# ------------------------------------------------------------
+
 @app.get("/", tags=["health"])
 async def health_check():
     return {
@@ -44,9 +43,10 @@ async def health_check():
 async def hello(name: str = "world"):
     return {"message": f"Hello, {name}!"}
 
-# -------------------------------------------------------------------
+# ------------------------------------------------------------
 # Supabase test
-# -------------------------------------------------------------------
+# ------------------------------------------------------------
+
 @app.get("/supabase-test", tags=["supabase"])
 async def supabase_test():
     """
@@ -84,9 +84,10 @@ async def supabase_test():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-# -------------------------------------------------------------------
+# ------------------------------------------------------------
 # Main Supabase Reddit endpoints
-# -------------------------------------------------------------------
+# ------------------------------------------------------------
+
 @app.get("/supabase/reddit_posts", tags=["supabase"])
 async def get_reddit_posts(limit: int = 100):
     """
@@ -101,6 +102,7 @@ async def get_reddit_posts(limit: int = 100):
             .execute()
         )
         return response.data
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -112,7 +114,7 @@ async def search_reddit_posts(
 ):
     """
     Search reddit_posts by keyword in title or selftext.
-    Frontend calls this to support keyword search.
+    Frontend will call this to support keyword search.
     """
     try:
         pattern = f"%{keyword}%"
@@ -131,31 +133,36 @@ async def search_reddit_posts(
             "keyword": keyword,
             "results": response.data,
         }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# -------------------------------------------------------------------
-# Scraping – NOW GET (so browser can call it)
-# -------------------------------------------------------------------
-@app.get("/scrape/reddit", tags=["scrape"])
-async def scrape_reddit(
-    q: str = Query("microdosing", description="Keyword or subreddit search"),
-    limit: int = Query(50, ge=1, le=200),
-):
-    """
-    Trigger Reddit scraping + store into Supabase.
-    You can call this from the browser:
-    https://mcrdse-api.onrender.com/scrape/reddit?q=microdosing&limit=50
-    """
-    try:
-        posts = fetch_reddit_posts(q, limit)
-        result = store_posts_in_supabase(posts)
+# ------------------------------------------------------------
+# Scraping
+# ------------------------------------------------------------
 
-        return {
-            "status": "ok",
-            "query": q,
-            "limit": limit,
-            "inserted": result["inserted"],
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+def _scrape_and_store(q: str, limit: int):
+    posts = fetch_reddit_posts(q, limit)
+    result = store_posts_in_supabase(posts)
+    return {
+        "status": "ok",
+        "query": q,
+        "limit": limit,
+        "inserted": result["inserted"],
+    }
+
+@app.post("/scrape/reddit", tags=["scraper"])
+def scrape_reddit_post(q: str = "ai automation", limit: int = 20):
+    """
+    Trigger Reddit scraping + store into Supabase via POST.
+    """
+    return _scrape_and_store(q, limit)
+
+
+@app.get("/scrape/reddit", tags=["scraper"])
+def scrape_reddit_get(q: str = "ai automation", limit: int = 20):
+    """
+    Same as POST, but allows triggering from browser address bar.
+    NOTE: only use manually / admin use, not public UI.
+    """
+    return _scrape_and_store(q, limit)
