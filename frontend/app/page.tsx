@@ -1,15 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, FormEvent } from "react";
 
 type RedditPost = {
   id: string;
   title?: string;
- HEAD
-  selftext?: string;
-=======
   selftext?: string | null;
- 875ff95 (Add keyword search UI + connect frontend to Supabase keyword API)
   subreddit?: string;
   url?: string;
   created_utc?: string | number;
@@ -40,7 +36,7 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
-  const handleSearch = async (e?: React.FormEvent) => {
+  const handleSearch = async (e?: FormEvent) => {
     if (e) e.preventDefault();
     const trimmed = keyword.trim();
     if (!trimmed) return;
@@ -53,11 +49,7 @@ export default function HomePage() {
       const res = await fetch(
         `${API_BASE_URL}/supabase/reddit_posts/search?keyword=${encodeURIComponent(
           trimmed
-<<<<<<< HEAD
-        )}`
-=======
         )}&limit=50`
->>>>>>> 875ff95 (Add keyword search UI + connect frontend to Supabase keyword API)
       );
 
       if (!res.ok) {
@@ -78,21 +70,12 @@ export default function HomePage() {
   return (
     <main className="min-h-screen px-4 py-8 md:px-10 lg:px-20">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">
-<<<<<<< HEAD
+        <h1 className="mb-2 text-3xl font-bold">
           Microdose Social Listening – Reddit Keyword Search
         </h1>
-        <p className="text-sm text-gray-600 max-w-2xl">
-          Type any keyword (e.g. <b>“microdosing”</b>, <b>“psilocybin”</b>,
-          <b>“anxiety”</b>) to filter Reddit posts stored in Supabase and see
-          only the posts that match.
-=======
-          MCRDSE – Reddit Keyword Search
-        </h1>
-        <p className="text-sm text-gray-600 max-w-2xl">
+        <p className="max-w-2xl text-sm text-gray-600">
           Enter a keyword like <b>“microdosing”</b>, <b>“psilocybin”</b>, or{" "}
           <b>“magic mushrooms”</b> to see matching posts from Supabase.
->>>>>>> 875ff95 (Add keyword search UI + connect frontend to Supabase keyword API)
         </p>
       </header>
 
@@ -124,16 +107,6 @@ export default function HomePage() {
         </div>
       )}
 
-<<<<<<< HEAD
-      {/* No results */}
-      {hasSearched && !loading && results.length === 0 && !error && (
-        <p className="text-sm text-gray-500">
-          No results found for <span className="font-semibold">{keyword}</span>.
-        </p>
-      )}
-
-      {/* Results */}
-=======
       {/* No results message */}
       {hasSearched && !loading && results.length === 0 && !error && (
         <p className="text-sm text-gray-500">
@@ -143,7 +116,6 @@ export default function HomePage() {
       )}
 
       {/* Results grid */}
->>>>>>> 875ff95 (Add keyword search UI + connect frontend to Supabase keyword API)
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {results.map((post) => (
           <article key={post.id} className="rounded-2xl border p-4">
