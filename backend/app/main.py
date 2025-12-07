@@ -13,7 +13,10 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# Allow frontend (localhost:3000 + any others) to call the API
+# ------------------------------------------------------------
+# CORS
+# ------------------------------------------------------------
+
 origins = [
     "http://localhost:3000",
     "https://microdose-social-platform.vercel.app",
@@ -26,6 +29,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # ------------------------------------------------------------
 # Health + demo
@@ -42,6 +46,7 @@ async def health_check():
 @app.get("/hello", tags=["demo"])
 async def hello(name: str = "world"):
     return {"message": f"Hello, {name}!"}
+
 
 # ------------------------------------------------------------
 # Supabase test
@@ -83,6 +88,7 @@ async def supabase_test():
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
 
 # ------------------------------------------------------------
 # Main Supabase Reddit endpoints
@@ -137,33 +143,30 @@ async def search_reddit_posts(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # ------------------------------------------------------------
-# Scraping (GET + POST) so you can hit it from browser
+# Scraping – can be triggered via GET (browser) or POST (code)
 # ------------------------------------------------------------
 
-@app.api_route("/scrape/reddit", methods=["GET", "POST"], tags=["scrape"])
+@app.api_route("/scrape/reddit", methods=["GET", "POST"], tags=["scraping"])
 async def scrape_reddit(
-    q: str = Query("microdosing", description="Reddit search query / keyword"),
-    limit: int = Query(50, ge=1, le=200, description="Number of posts to fetch"),
+    q: str = Query("ai automation", description="Search keyword for Reddit"),
+    limit: int = Query(20, ge=1, le=200),
 ):
     """
     Trigger Reddit scraping + store into Supabase.
 
     Example (browser):
-      https://mcrdse-api.onrender.com/scrape/reddit?q=microdosing&limit=50
+    https://mcrdse-api.onrender.com/scrape/reddit?q=microdosing&limit=50
     """
     try:
         posts = fetch_reddit_posts(q, limit)
         result = store_posts_in_supabase(posts)
-
-        # result["inserted"] is from your existing helper
-        inserted = result.get("inserted", len(posts))
-
         return {
             "status": "ok",
             "query": q,
             "limit": limit,
-            "inserted": inserted,
+            "inserted": result.get("inserted", 0),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
