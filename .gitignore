@@ -16,9 +16,15 @@ frontend/node_modules/
 backend/package-lock.json
 package-lock.json
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 1450436 (Update .gitignore to ignore .next directory)
 
 # Ignore Next.js build output
 .next/
 frontend/.next/
+<<<<<<< HEAD
 =======
 >>>>>>> 518cb1f (Add keyword search UI and clean up gitignore)
+=======
+>>>>>>> 1450436 (Update .gitignore to ignore .next directory)

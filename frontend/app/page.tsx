@@ -71,7 +71,7 @@ export default function HomePage() {
     <main className="min-h-screen px-4 py-8 md:px-10 lg:px-20">
       <header className="mb-8">
         <h1 className="mb-2 text-3xl font-bold">
-          Microdose Social Listening – Reddit Keyword Search
+          MCRDSE – Reddit Keyword Search
         </h1>
         <p className="max-w-2xl text-sm text-gray-600">
           Enter a keyword like <b>“microdosing”</b>, <b>“psilocybin”</b>, or{" "}
@@ -107,7 +107,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* No results message */}
+      {/* No results */}
       {hasSearched && !loading && results.length === 0 && !error && (
         <p className="text-sm text-gray-500">
           No results found for{" "}
@@ -128,7 +128,7 @@ export default function HomePage() {
             </h2>
 
             {post.selftext && (
-              <p className="mb-2 text-sm line-clamp-4">{post.selftext}</p>
+              <p className="mb-2 line-clamp-4 text-sm">{post.selftext}</p>
             )}
 
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
