@@ -1,4 +1,4 @@
-from .scraping import fetch_reddit_posts, store_posts_in_supabase
+from .reddit_scraper import fetch_reddit_posts, store_posts_in_supabase
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from ..supabase_client import supabase
