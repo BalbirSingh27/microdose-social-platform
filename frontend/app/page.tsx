@@ -1,157 +1,227 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState } from "react";
+import {
+  searchRedditPosts,
+  searchTwitter,
+  searchInstagram,
+  searchFacebook,
+} from "../lib/api"; // if this path breaks, change to "@/lib/api"
 
-type RedditPost = {
-  id: string;
-  title?: string;
-  selftext?: string | null;
-  subreddit?: string;
-  url?: string;
-  created_utc?: string | number;
-  score?: number;
-  num_comments?: number;
-};
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "https://mcrdse-api.onrender.com";
-
-function formatDate(value: string | number | undefined) {
-  if (!value) return "";
-  try {
-    const d =
-      typeof value === "number"
-        ? new Date(value * 1000)
-        : new Date(value as string);
-    return d.toLocaleString();
-  } catch {
-    return String(value);
-  }
-}
+type AnyPost = any;
 
 export default function HomePage() {
   const [keyword, setKeyword] = useState("");
-  const [results, setResults] = useState<RedditPost[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasSearched, setHasSearched] = useState(false);
 
-  const handleSearch = async (e?: FormEvent) => {
-    if (e) e.preventDefault();
-    const trimmed = keyword.trim();
-    if (!trimmed) return;
+  const [redditResults, setRedditResults] = useState<AnyPost[]>([]);
+  const [twitterResults, setTwitterResults] = useState<AnyPost[]>([]);
+  const [instagramResults, setInstagramResults] = useState<AnyPost[]>([]);
+  const [facebookResults, setFacebookResults] = useState<AnyPost[]>([]);
+
+  async function handleSearch() {
+    const k = keyword.trim();
+    if (!k) return;
 
     setLoading(true);
     setError(null);
-    setHasSearched(true);
 
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/supabase/reddit_posts/search?keyword=${encodeURIComponent(
-          trimmed
-        )}&limit=50`
-      );
+      // 🔥 One keyword → 4 platforms
+      const [reddit, twitter, instagram, facebook] = await Promise.all([
+        searchRedditPosts(k, 100),
+        searchTwitter(k, 50),
+        searchInstagram(k, 50),
+        searchFacebook(k, 50),
+      ]);
 
-      if (!res.ok) {
-        throw new Error(`Request failed with status ${res.status}`);
-      }
-
-      const data = await res.json();
-      setResults((data && data.results) || []);
+      setRedditResults(reddit.results || []);
+      setTwitterResults(twitter.results || []);
+      setInstagramResults(instagram.results || []);
+      setFacebookResults(facebook.results || []);
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Something went wrong");
-      setResults([]);
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-10 lg:px-20">
-      <header className="mb-8">
-        <h1 className="mb-2 text-3xl font-bold">
-          MCRDSE – Reddit Keyword Search
-        </h1>
-        <p className="max-w-2xl text-sm text-gray-600">
-          Enter a keyword like <b>“microdosing”</b>, <b>“psilocybin”</b>, or{" "}
-          <b>“magic mushrooms”</b> to see matching posts from Supabase.
-        </p>
-      </header>
+    <main style={{ padding: "2rem", maxWidth: 1200, margin: "0 auto" }}>
+      <h1 style={{ fontSize: "2rem", fontWeight: 600, marginBottom: "1rem" }}>
+        MCRDSE – Reddit Keyword Search
+      </h1>
+      <p style={{ marginBottom: "1rem", color: "#555" }}>
+        Enter a keyword like <strong>“microdosing”</strong>,{" "}
+        <strong>“psilocybin”</strong>, or <strong>“magic mushrooms”</strong> to
+        search Reddit (and demo Twitter / Instagram / Facebook).
+      </p>
 
       {/* Search bar */}
-      <form
-        onSubmit={handleSearch}
-        className="mb-6 flex flex-col gap-3 md:flex-row md:items-center"
-      >
+      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem" }}>
         <input
           type="text"
+          placeholder="Enter keyword to search posts…"
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
-          placeholder="Enter keyword to search Reddit posts…"
-          className="flex-1 rounded-xl border px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+          onKeyDown={handleKeyDown}
+          style={{
+            flex: 1,
+            padding: "0.75rem 1rem",
+            borderRadius: 6,
+            border: "1px solid #ccc",
+          }}
         />
         <button
-          type="submit"
-          disabled={loading || !keyword.trim()}
-          className="rounded-xl border px-5 py-2 font-semibold md:w-auto disabled:opacity-60"
+          onClick={handleSearch}
+          disabled={loading}
+          style={{
+            padding: "0.75rem 1.25rem",
+            borderRadius: 6,
+            border: "none",
+            backgroundColor: "#111827",
+            color: "white",
+            cursor: "pointer",
+            fontWeight: 500,
+            opacity: loading ? 0.7 : 1,
+          }}
         >
-          {loading ? "Searching..." : "Search"}
+          {loading ? "Searching…" : "Search"}
         </button>
-      </form>
+      </div>
 
-      {/* Error */}
       {error && (
-        <div className="mb-4 rounded-xl border px-4 py-3 text-sm">
-          Error: {error}
+        <div
+          style={{
+            marginBottom: "1rem",
+            padding: "0.75rem 1rem",
+            borderRadius: 6,
+            backgroundColor: "#fee2e2",
+            color: "#b91c1c",
+          }}
+        >
+          {error}
         </div>
       )}
 
-      {/* No results */}
-      {hasSearched && !loading && results.length === 0 && !error && (
-        <p className="text-sm text-gray-500">
-          No results found for{" "}
-          <span className="font-semibold">{keyword}</span>.
-        </p>
-      )}
-
-      {/* Results grid */}
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {results.map((post) => (
-          <article key={post.id} className="rounded-2xl border p-4">
-            <div className="mb-1 text-xs uppercase tracking-wide text-gray-500">
-              {post.subreddit ? `r/${post.subreddit}` : "Reddit"}
-            </div>
-
-            <h2 className="mb-2 text-sm font-semibold">
-              {post.title || "(No title)"}
-            </h2>
-
-            {post.selftext && (
-              <p className="mb-2 line-clamp-4 text-sm">{post.selftext}</p>
-            )}
-
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-              {post.score !== undefined && <span>⬆ {post.score}</span>}
-              {post.num_comments !== undefined && (
-                <span>💬 {post.num_comments} comments</span>
-              )}
-              <span>{formatDate(post.created_utc)}</span>
-            </div>
-
-            {post.url && (
-              <a
-                href={post.url}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-2 inline-block text-xs underline"
+      {/* Reddit results */}
+      <section style={{ marginBottom: "2rem" }}>
+        <h2 style={{ fontSize: "1.25rem", marginBottom: "0.75rem" }}>
+          Reddit Results ({redditResults.length})
+        </h2>
+        {redditResults.length === 0 ? (
+          <p style={{ color: "#555" }}>No Reddit posts for this keyword yet.</p>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+              gap: "1rem",
+            }}
+          >
+            {redditResults.map((post: any) => (
+              <article
+                key={post.id || post.url}
+                style={{
+                  borderRadius: 8,
+                  border: "1px solid #e5e7eb",
+                  padding: "1rem",
+                  backgroundColor: "white",
+                }}
               >
-                View on Reddit
-              </a>
-            )}
-          </article>
-        ))}
+                <div
+                  style={{
+                    fontSize: "0.75rem",
+                    textTransform: "uppercase",
+                    color: "#6b7280",
+                    marginBottom: "0.25rem",
+                  }}
+                >
+                  r/{post.subreddit || "unknown"}
+                </div>
+                <h3
+                  style={{
+                    fontSize: "1rem",
+                    fontWeight: 600,
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  {post.title || "Untitled post"}
+                </h3>
+                <p
+                  style={{
+                    fontSize: "0.875rem",
+                    color: "#4b5563",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  {(post.selftext || "").slice(0, 160)}
+                  {post.selftext && post.selftext.length > 160 ? "…" : ""}
+                </p>
+                <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>
+                  Score: {post.score ?? 0} · Comments: {post.num_comments ?? 0}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Simple counts for other platforms (demo) */}
+      <section style={{ display: "grid", gap: "1rem" }}>
+        <PlatformSummary
+          name="Twitter"
+          count={twitterResults.length}
+          color="#1DA1F2"
+        />
+        <PlatformSummary
+          name="Instagram"
+          count={instagramResults.length}
+          color="#E1306C"
+        />
+        <PlatformSummary
+          name="Facebook"
+          count={facebookResults.length}
+          color="#1877F2"
+        />
       </section>
     </main>
+  );
+}
+
+function PlatformSummary({
+  name,
+  count,
+  color,
+}: {
+  name: string;
+  count: number;
+  color: string;
+}) {
+  return (
+    <div
+      style={{
+        borderRadius: 8,
+        border: "1px solid #e5e7eb",
+        padding: "0.75rem 1rem",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        backgroundColor: "white",
+      }}
+    >
+      <span style={{ fontWeight: 500 }}>{name}</span>
+      <span style={{ color }}>
+        {count} {count === 1 ? "result" : "results"}
+      </span>
+    </div>
   );
 }
