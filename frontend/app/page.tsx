@@ -6,21 +6,29 @@ import {
   searchTwitter,
   searchInstagram,
   searchFacebook,
-} from "../lib/api"; // if this path breaks, change to "@/lib/api"
+} from "../lib/api";
 
-type AnyPost = any;
+type RedditPost = {
+  id: string;
+  title: string;
+  selftext: string;
+  subreddit: string;
+  created_utc?: string;
+};
 
 export default function HomePage() {
   const [keyword, setKeyword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [redditResults, setRedditResults] = useState<RedditPost[]>([]);
+  const [twitterResults, setTwitterResults] = useState<any[]>([]);
+  const [instagramResults, setInstagramResults] = useState<any[]>([]);
+  const [facebookResults, setFacebookResults] = useState<any[]>([]);
+
   const [error, setError] = useState<string | null>(null);
 
-  const [redditResults, setRedditResults] = useState<AnyPost[]>([]);
-  const [twitterResults, setTwitterResults] = useState<AnyPost[]>([]);
-  const [instagramResults, setInstagramResults] = useState<AnyPost[]>([]);
-  const [facebookResults, setFacebookResults] = useState<AnyPost[]>([]);
-
-  async function handleSearch() {
+  async function handleSearch(e?: React.FormEvent) {
+    if (e) e.preventDefault();
     const k = keyword.trim();
     if (!k) return;
 
@@ -28,7 +36,7 @@ export default function HomePage() {
     setError(null);
 
     try {
-      // 🔥 One keyword → 4 platforms
+      // 🔥 Call all 4 backends with the SAME keyword
       const [reddit, twitter, instagram, facebook] = await Promise.all([
         searchRedditPosts(k, 100),
         searchTwitter(k, 50),
@@ -36,43 +44,39 @@ export default function HomePage() {
         searchFacebook(k, 50),
       ]);
 
-      setRedditResults(reddit.results || []);
+      setRedditResults(reddit.results || reddit || []);
       setTwitterResults(twitter.results || []);
       setInstagramResults(instagram.results || []);
       setFacebookResults(facebook.results || []);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Something went wrong");
+      setError(err.message || "Something went wrong.");
     } finally {
       setLoading(false);
     }
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
-  }
-
   return (
-    <main style={{ padding: "2rem", maxWidth: 1200, margin: "0 auto" }}>
-      <h1 style={{ fontSize: "2rem", fontWeight: 600, marginBottom: "1rem" }}>
+    <main style={{ maxWidth: 960, margin: "0 auto", padding: "2rem 1rem" }}>
+      <h1 style={{ fontSize: "2rem", fontWeight: 700, marginBottom: "1rem" }}>
         MCRDSE – Reddit Keyword Search
       </h1>
-      <p style={{ marginBottom: "1rem", color: "#555" }}>
+
+      <p style={{ marginBottom: "1rem" }}>
         Enter a keyword like <strong>“microdosing”</strong>,{" "}
         <strong>“psilocybin”</strong>, or <strong>“magic mushrooms”</strong> to
         search Reddit (and demo Twitter / Instagram / Facebook).
       </p>
 
-      {/* Search bar */}
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem" }}>
+      <form
+        onSubmit={handleSearch}
+        style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem" }}
+      >
         <input
           type="text"
           placeholder="Enter keyword to search posts…"
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
-          onKeyDown={handleKeyDown}
           style={{
             flex: 1,
             padding: "0.75rem 1rem",
@@ -81,22 +85,21 @@ export default function HomePage() {
           }}
         />
         <button
-          onClick={handleSearch}
+          type="submit"
           disabled={loading}
           style={{
-            padding: "0.75rem 1.25rem",
+            padding: "0.75rem 1.5rem",
             borderRadius: 6,
             border: "none",
-            backgroundColor: "#111827",
+            background: "#020617",
             color: "white",
             cursor: "pointer",
-            fontWeight: 500,
             opacity: loading ? 0.7 : 1,
           }}
         >
           {loading ? "Searching…" : "Search"}
         </button>
-      </div>
+      </form>
 
       {error && (
         <div
@@ -104,7 +107,7 @@ export default function HomePage() {
             marginBottom: "1rem",
             padding: "0.75rem 1rem",
             borderRadius: 6,
-            backgroundColor: "#fee2e2",
+            background: "#fee2e2",
             color: "#b91c1c",
           }}
         >
@@ -114,114 +117,116 @@ export default function HomePage() {
 
       {/* Reddit results */}
       <section style={{ marginBottom: "2rem" }}>
-        <h2 style={{ fontSize: "1.25rem", marginBottom: "0.75rem" }}>
+        <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: 8 }}>
           Reddit Results ({redditResults.length})
         </h2>
+
         {redditResults.length === 0 ? (
-          <p style={{ color: "#555" }}>No Reddit posts for this keyword yet.</p>
+          <p style={{ color: "#6b7280" }}>
+            No Reddit posts for this keyword yet.
+          </p>
         ) : (
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-              gap: "1rem",
+              gap: "0.75rem",
+              gridTemplateColumns: "1fr",
             }}
           >
-            {redditResults.map((post: any) => (
+            {redditResults.map((post) => (
               <article
-                key={post.id || post.url}
+                key={post.id}
                 style={{
-                  borderRadius: 8,
                   border: "1px solid #e5e7eb",
-                  padding: "1rem",
-                  backgroundColor: "white",
+                  borderRadius: 8,
+                  padding: "0.75rem 1rem",
+                  background: "white",
                 }}
               >
                 <div
                   style={{
                     fontSize: "0.75rem",
-                    textTransform: "uppercase",
                     color: "#6b7280",
-                    marginBottom: "0.25rem",
+                    marginBottom: 4,
                   }}
                 >
-                  r/{post.subreddit || "unknown"}
+                  r/{post.subreddit}
                 </div>
                 <h3
                   style={{
                     fontSize: "1rem",
                     fontWeight: 600,
-                    marginBottom: "0.5rem",
+                    marginBottom: 4,
                   }}
                 >
-                  {post.title || "Untitled post"}
+                  {post.title}
                 </h3>
-                <p
-                  style={{
-                    fontSize: "0.875rem",
-                    color: "#4b5563",
-                    marginBottom: "0.5rem",
-                  }}
-                >
-                  {(post.selftext || "").slice(0, 160)}
-                  {post.selftext && post.selftext.length > 160 ? "…" : ""}
-                </p>
-                <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>
-                  Score: {post.score ?? 0} · Comments: {post.num_comments ?? 0}
-                </div>
+                {post.selftext && (
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "#4b5563",
+                      maxHeight: "4.5rem",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {post.selftext}
+                  </p>
+                )}
               </article>
             ))}
           </div>
         )}
       </section>
 
-      {/* Simple counts for other platforms (demo) */}
-      <section style={{ display: "grid", gap: "1rem" }}>
-        <PlatformSummary
-          name="Twitter"
-          count={twitterResults.length}
-          color="#1DA1F2"
-        />
-        <PlatformSummary
-          name="Instagram"
-          count={instagramResults.length}
-          color="#E1306C"
-        />
-        <PlatformSummary
-          name="Facebook"
-          count={facebookResults.length}
-          color="#1877F2"
-        />
+      {/* Simple headers for the other platforms (demo data for now) */}
+      <section style={{ marginBottom: "1rem" }}>
+        <h3
+          style={{
+            fontSize: "1rem",
+            fontWeight: 600,
+            display: "flex",
+            justifyContent: "space-between",
+          }}
+        >
+          <span>Twitter</span>
+          <span style={{ color: "#2563eb" }}>
+            {twitterResults.length} results
+          </span>
+        </h3>
+      </section>
+
+      <section style={{ marginBottom: "1rem" }}>
+        <h3
+          style={{
+            fontSize: "1rem",
+            fontWeight: 600,
+            display: "flex",
+            justifyContent: "space-between",
+          }}
+        >
+          <span>Instagram</span>
+          <span style={{ color: "#dc2626" }}>
+            {instagramResults.length} results
+          </span>
+        </h3>
+      </section>
+
+      <section style={{ marginBottom: "1rem" }}>
+        <h3
+          style={{
+            fontSize: "1rem",
+            fontWeight: 600,
+            display: "flex",
+            justifyContent: "space-between",
+          }}
+        >
+          <span>Facebook</span>
+          <span style={{ color: "#2563eb" }}>
+            {facebookResults.length} results
+          </span>
+        </h3>
       </section>
     </main>
-  );
-}
-
-function PlatformSummary({
-  name,
-  count,
-  color,
-}: {
-  name: string;
-  count: number;
-  color: string;
-}) {
-  return (
-    <div
-      style={{
-        borderRadius: 8,
-        border: "1px solid #e5e7eb",
-        padding: "0.75rem 1rem",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        backgroundColor: "white",
-      }}
-    >
-      <span style={{ fontWeight: 500 }}>{name}</span>
-      <span style={{ color }}>
-        {count} {count === 1 ? "result" : "results"}
-      </span>
-    </div>
   );
 }
