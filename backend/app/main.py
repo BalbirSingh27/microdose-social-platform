@@ -1,3 +1,6 @@
+from .scraping.twitter_scraper import fetch_twitter_posts
+from .scraping.instagram_scraper import fetch_instagram_posts
+from .scraping.facebook_scraper import fetch_facebook_posts
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
