@@ -1,8 +1,6 @@
-# backend/app/scraping/twitter_scraper.py
 from datetime import datetime, timezone
 
 def fetch_twitter_posts(keyword: str, limit: int = 50):
-    """Demo data for Twitter – keyword-aware fake posts."""
     now = datetime.now(timezone.utc).isoformat()
 
     return [
