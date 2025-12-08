@@ -1,4 +1,3 @@
-# backend/app/scraping/instagram_scraper.py
 from datetime import datetime, timezone
 
 def fetch_instagram_posts(keyword: str, limit: int = 50):
