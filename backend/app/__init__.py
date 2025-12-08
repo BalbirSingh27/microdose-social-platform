@@ -1,3 +1,5 @@
-from ..reddit_scraper import fetch_reddit_posts, store_posts_in_supabase
+# Make this package expose the FastAPI app
 
-__all__ = ["fetch_reddit_posts", "store_posts_in_supabase"]
+from .main import app
+
+__all__ = ["app"]
