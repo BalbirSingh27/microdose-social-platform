@@ -1,10 +1,10 @@
 from .scraping import fetch_reddit_posts, store_posts_in_supabase
-from fastapi import FastAPI, HTTPException, Query, Body
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from ..supabase_client import supabase
+from dotenv import load_dotenv
 import os
 import requests
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -16,6 +16,7 @@ app = FastAPI(
 # ------------------------------------------------------------
 # CORS
 # ------------------------------------------------------------
+
 origins = [
     "http://localhost:3000",
     "https://microdose-social-platform.vercel.app",
@@ -33,6 +34,7 @@ app.add_middleware(
 # Health + demo
 # ------------------------------------------------------------
 
+
 @app.get("/", tags=["health"])
 async def health_check():
     return {
@@ -45,10 +47,10 @@ async def health_check():
 async def hello(name: str = "world"):
     return {"message": f"Hello, {name}!"}
 
-
 # ------------------------------------------------------------
 # Supabase test (REST API)
 # ------------------------------------------------------------
+
 
 @app.get("/supabase-test", tags=["supabase"])
 async def supabase_test():
@@ -87,10 +89,10 @@ async def supabase_test():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-
 # ------------------------------------------------------------
 # Main Supabase Reddit endpoints
 # ------------------------------------------------------------
+
 
 @app.get("/supabase/reddit_posts", tags=["supabase"])
 async def get_reddit_posts(limit: int = 100):
@@ -117,7 +119,7 @@ async def search_reddit_posts(
 ):
     """
     Search reddit_posts by keyword in title or selftext.
-    Frontend calls this to support keyword search.
+    Called by the frontend search bar.
     """
     try:
         pattern = f"%{keyword}%"
@@ -138,10 +140,10 @@ async def search_reddit_posts(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ------------------------------------------------------------
+# Scraping (GET + POST)
+# ------------------------------------------------------------
 
-# ------------------------------------------------------------
-# Scraping (supports GET and POST)
-# ------------------------------------------------------------
 
 @app.api_route("/scrape/reddit", methods=["GET", "POST"], tags=["scraper"])
 def scrape_reddit(
@@ -151,8 +153,8 @@ def scrape_reddit(
     """
     Trigger Reddit scraping + store into Supabase.
 
-    - GET https://mcrdse-api.onrender.com/scrape/reddit?q=microdosing&limit=50
-    - Or POST with the same query params.
+    Examples:
+      GET https://mcrdse-api.onrender.com/scrape/reddit?q=microdosing&limit=50
     """
     try:
         posts = fetch_reddit_posts(q, limit)
