@@ -1,10 +1,12 @@
-from .scraping import fetch_reddit_posts, store_posts_in_supabase
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+
+from .scraping import fetch_reddit_posts, store_posts_in_supabase
 from ..supabase_client import supabase
-from dotenv import load_dotenv
+
 import os
 import requests
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -47,8 +49,9 @@ async def health_check():
 async def hello(name: str = "world"):
     return {"message": f"Hello, {name}!"}
 
+
 # ------------------------------------------------------------
-# Supabase test (REST API)
+# Supabase test
 # ------------------------------------------------------------
 
 
@@ -89,6 +92,7 @@ async def supabase_test():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+
 # ------------------------------------------------------------
 # Main Supabase Reddit endpoints
 # ------------------------------------------------------------
@@ -108,6 +112,7 @@ async def get_reddit_posts(limit: int = 100):
             .execute()
         )
         return response.data
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -119,7 +124,7 @@ async def search_reddit_posts(
 ):
     """
     Search reddit_posts by keyword in title or selftext.
-    Called by the frontend search bar.
+    Frontend will call this to support keyword search.
     """
     try:
         pattern = f"%{keyword}%"
@@ -137,8 +142,10 @@ async def search_reddit_posts(
             "keyword": keyword,
             "results": response.data,
         }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # ------------------------------------------------------------
 # Scraping (GET + POST)
@@ -153,7 +160,7 @@ def scrape_reddit(
     """
     Trigger Reddit scraping + store into Supabase.
 
-    Examples:
+    Example:
       GET https://mcrdse-api.onrender.com/scrape/reddit?q=microdosing&limit=50
     """
     try:
