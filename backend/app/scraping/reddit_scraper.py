@@ -27,6 +27,13 @@ def fetch_reddit_posts(query: str = "ai automation", limit: int = 20):
         headers=HEADERS,
         timeout=10,
     )
+
+    # Handle Reddit rate limit more clearly
+    if resp.status_code == 429:
+        raise RuntimeError(
+            f"Reddit rate limit hit (429). Try again later for query='{query}'."
+        )
+
     resp.raise_for_status()
 
     data = resp.json()
@@ -59,18 +66,12 @@ def store_posts_in_supabase(posts):
     if not posts:
         return {"inserted": 0}
 
-    try:
-        result = (
-            supabase
-            .table("reddit_posts")
-            .insert(posts)   # <-- simple insert, avoids ON CONFLICT error
-            .execute()
-        )
+    result = (
+        supabase
+        .table("reddit_posts")
+        .insert(posts)   # <-- changed from upsert(..., on_conflict="id")
+        .execute()
+    )
 
-        inserted_count = len(result.data) if result.data else 0
-
-        return {"inserted": inserted_count}
-
-    except Exception as e:
-        return {"error": str(e), "inserted": 0}
-
+    inserted_count = len(result.data) if result.data else 0
+    return {"inserted": inserted_count}
