@@ -53,17 +53,24 @@ def fetch_reddit_posts(query: str = "ai automation", limit: int = 20):
 
 def store_posts_in_supabase(posts):
     """
-    Upsert a list of posts into the reddit_posts table in Supabase.
+    Insert a list of posts into the reddit_posts table in Supabase.
+    (No ON CONFLICT de-duping for now.)
     """
     if not posts:
         return {"inserted": 0}
 
-    result = (
-        supabase
-        .table("reddit_posts")
-        .upsert(posts, on_conflict="id")
-        .execute()
-    )
+    try:
+        result = (
+            supabase
+            .table("reddit_posts")
+            .insert(posts)   # <-- simple insert, avoids ON CONFLICT error
+            .execute()
+        )
 
-    inserted_count = len(result.data) if result.data else 0
-    return {"inserted": inserted_count}
+        inserted_count = len(result.data) if result.data else 0
+
+        return {"inserted": inserted_count}
+
+    except Exception as e:
+        return {"error": str(e), "inserted": 0}
+
