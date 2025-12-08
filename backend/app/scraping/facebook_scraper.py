@@ -1,4 +1,3 @@
-# backend/app/scraping/facebook_scraper.py
 from datetime import datetime, timezone
 
 def fetch_facebook_posts(keyword: str, limit: int = 50):
