@@ -1,9 +1,6 @@
 import requests
 from datetime import datetime, timezone
 
-# NOTE: supabase_client is in backend/supabase_client.py
-# scraping package path = backend.app.scraping
-# so we go 2 levels up (backend) using "..."
 from ...supabase_client import supabase
 
 REDDIT_SEARCH_URL = "https://www.reddit.com/search.json"
@@ -27,13 +24,6 @@ def fetch_reddit_posts(query: str = "ai automation", limit: int = 20):
         headers=HEADERS,
         timeout=10,
     )
-
-    # Handle Reddit rate limit more clearly
-    if resp.status_code == 429:
-        raise RuntimeError(
-            f"Reddit rate limit hit (429). Try again later for query='{query}'."
-        )
-
     resp.raise_for_status()
 
     data = resp.json()
@@ -41,17 +31,28 @@ def fetch_reddit_posts(query: str = "ai automation", limit: int = 20):
 
     for item in data.get("data", {}).get("children", []):
         post = item.get("data", {})
+
         posts.append(
             {
+                # reddit id is a short string like "1phpsnq"
+                # table column "id" is TEXT, so this is fine
                 "id": post.get("id"),
+
+                # store as ISO string, Supabase will also set created_at default now()
                 "created_at": datetime.fromtimestamp(
                     post.get("created_utc", 0), tz=timezone.utc
                 ).isoformat(),
+
                 "title": post.get("title") or "",
                 "selftext": post.get("selftext") or "",
                 "subreddit": post.get("subreddit") or "",
                 "score": post.get("score", 0),
                 "num_comments": post.get("num_comments", 0),
+
+                # optional extra column if you want it
+                "created_utc": datetime.fromtimestamp(
+                    post.get("created_utc", 0), tz=timezone.utc
+                ).isoformat(),
             }
         )
 
@@ -61,7 +62,7 @@ def fetch_reddit_posts(query: str = "ai automation", limit: int = 20):
 def store_posts_in_supabase(posts):
     """
     Insert a list of posts into the reddit_posts table in Supabase.
-    (No ON CONFLICT de-duping for now.)
+    (No ON CONFLICT de-duping for now – simplest version.)
     """
     if not posts:
         return {"inserted": 0}
@@ -69,7 +70,7 @@ def store_posts_in_supabase(posts):
     result = (
         supabase
         .table("reddit_posts")
-        .insert(posts)   # <-- changed from upsert(..., on_conflict="id")
+        .insert(posts)   # <- INSERT only, no upsert / conflict
         .execute()
     )
 
