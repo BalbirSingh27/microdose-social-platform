@@ -1,6 +1,5 @@
-
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://mcrdse-api.onrender.com";
 
 async function getJson(path: string) {
   const res = await fetch(`${API_BASE}${path}`);
@@ -31,8 +30,11 @@ export async function searchFacebook(keyword: string, limit = 50) {
   return getJson(`/facebook/search?keyword=${q}&limit=${limit}`);
 }
 
-// 🔥 NEW – call backend AI endpoint
-export async function generateReplySuggestion(input: {
+/**
+ * Call backend AI endpoint to generate a reply suggestion
+ * for a Reddit post.
+ */
+export async function generateReplySuggestion(post: {
   title: string;
   selftext?: string;
   subreddit?: string;
@@ -40,16 +42,20 @@ export async function generateReplySuggestion(input: {
 }) {
   const res = await fetch(`${API_BASE}/ai/reply-suggestion`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(input),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: post.title,
+      selftext: post.selftext || "",
+      subreddit: post.subreddit || "",
+      platform: post.platform || "reddit",
+    }),
   });
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`AI suggestion failed: ${res.status} ${text}`);
+    throw new Error(`AI request failed: ${res.status} ${text}`);
   }
 
-  return res.json() as Promise<{ suggestion: string; platform: string }>;
+  const data = await res.json();
+  return data.suggestion as string;
 }
