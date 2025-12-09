@@ -6,6 +6,7 @@ import {
   searchTwitter,
   searchInstagram,
   searchFacebook,
+  generateReplySuggestion,
 } from "../lib/api";
 
 type RedditPost = {
@@ -60,11 +61,12 @@ export default function HomePage() {
 
   const [error, setError] = useState<string | null>(null);
 
-  // reply drafts + submitted state for Reddit
+  // reply drafts + submitted + loading state for Reddit
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [submittedReplies, setSubmittedReplies] = useState<
     Record<string, boolean>
   >({});
+  const [replyLoading, setReplyLoading] = useState<Record<string, boolean>>({});
 
   async function handleSearch(e?: React.FormEvent) {
     if (e) e.preventDefault();
@@ -98,24 +100,37 @@ export default function HomePage() {
     setReplyDrafts((prev) => ({ ...prev, [postId]: value }));
   }
 
-  function handleGenerateSuggestion(post: RedditPost) {
-    setReplyDrafts((prev) => {
-      if (prev[post.id]) return prev;
+  // 🔥 NEW: use backend AI endpoint for suggestion
+  async function handleGenerateSuggestion(post: RedditPost) {
+    // if user already typed something, don’t overwrite
+    if (replyDrafts[post.id]) return;
 
-      const snippet =
-        post.selftext && post.selftext.length > 180
-          ? post.selftext.slice(0, 180).replace(/\s+/g, " ") + "..."
-          : post.selftext || "";
+    setReplyLoading((prev) => ({ ...prev, [post.id]: true }));
+    setError(null);
 
-      const suggestion =
-        `Hey, thanks for sharing this post in r/${post.subreddit} about "${post.title}". ` +
-        (snippet
-          ? `Here’s a supportive, on-topic reply based on what you wrote:\n\n${snippet}\n\n`
-          : "") +
-        `Let me know if you'd like more resources or perspectives around this topic.`;
+    try {
+      const res = await generateReplySuggestion({
+        title: post.title,
+        selftext: post.selftext,
+        subreddit: post.subreddit,
+        platform: "reddit",
+      });
 
-      return { ...prev, [post.id]: suggestion };
-    });
+      const suggestion = res.suggestion || "";
+
+      setReplyDrafts((prev) => ({
+        ...prev,
+        [post.id]: suggestion,
+      }));
+    } catch (err: any) {
+      console.error(err);
+      setError(
+        err.message ||
+          "Failed to generate AI suggestion. Please try again in a moment."
+      );
+    } finally {
+      setReplyLoading((prev) => ({ ...prev, [post.id]: false }));
+    }
   }
 
   function handleSubmitReply(post: RedditPost) {
@@ -213,6 +228,7 @@ export default function HomePage() {
             {redditResults.map((post) => {
               const redditPostUrl = `https://www.reddit.com/r/${post.subreddit}/comments/${post.id}`;
               const draft = replyDrafts[post.id] || "";
+              const isReplyLoading = replyLoading[post.id] || false;
 
               return (
                 <article
@@ -317,16 +333,18 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => handleGenerateSuggestion(post)}
+                        disabled={isReplyLoading}
                         style={{
                           fontSize: "0.75rem",
                           padding: "0.25rem 0.5rem",
                           borderRadius: 4,
                           border: "1px solid #e5e7eb",
                           background: "#f9fafb",
-                          cursor: "pointer",
+                          cursor: isReplyLoading ? "default" : "pointer",
+                          opacity: isReplyLoading ? 0.6 : 1,
                         }}
                       >
-                        Generate suggestion
+                        {isReplyLoading ? "Generating…" : "Generate suggestion"}
                       </button>
                     </div>
 
