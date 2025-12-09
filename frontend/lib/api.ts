@@ -1,4 +1,4 @@
-// frontend/lib/api.ts
+
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -31,24 +31,19 @@ export async function searchFacebook(keyword: string, limit = 50) {
   return getJson(`/facebook/search?keyword=${q}&limit=${limit}`);
 }
 
-// 🔥 NEW: call backend AI endpoint
-export async function generateReplySuggestion(post: {
-  id: string;
+// 🔥 NEW – call backend AI endpoint
+export async function generateReplySuggestion(input: {
   title: string;
-  selftext?: string | null;
-  subreddit?: string | null;
+  selftext?: string;
+  subreddit?: string;
+  platform?: string;
 }) {
   const res = await fetch(`${API_BASE}/ai/reply-suggestion`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      title: post.title,
-      selftext: post.selftext || "",
-      subreddit: post.subreddit || null,
-      platform: "reddit",
-    }),
+    body: JSON.stringify(input),
   });
 
   if (!res.ok) {
@@ -56,5 +51,5 @@ export async function generateReplySuggestion(post: {
     throw new Error(`AI suggestion failed: ${res.status} ${text}`);
   }
 
-  return res.json(); // { suggestion: string, platform: "reddit" }
+  return res.json() as Promise<{ suggestion: string; platform: string }>;
 }
