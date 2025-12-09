@@ -61,13 +61,18 @@ export default function HomePage() {
 
   const [error, setError] = useState<string | null>(null);
 
-  // reply drafts + submitted + loading state for Reddit
+  // reply drafts + submitted state for Reddit
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [submittedReplies, setSubmittedReplies] = useState<
     Record<string, boolean>
   >({});
-  const [replyLoading, setReplyLoading] = useState<Record<string, boolean>>({});
 
+  // per-post AI loading state for the "Generate suggestion" button
+  const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
+
+  // ------------------------------------------------------------
+  // Search across all 4 platforms
+  // ------------------------------------------------------------
   async function handleSearch(e?: React.FormEvent) {
     if (e) e.preventDefault();
     const k = keyword.trim();
@@ -96,17 +101,20 @@ export default function HomePage() {
     }
   }
 
+  // ------------------------------------------------------------
+  // Reply helpers
+  // ------------------------------------------------------------
   function handleChangeReply(postId: string, value: string) {
     setReplyDrafts((prev) => ({ ...prev, [postId]: value }));
   }
 
-  // 🔥 NEW: use backend AI endpoint for suggestion
+  // 🔥 NEW: use backend AI endpoint to generate suggestion
   async function handleGenerateSuggestion(post: RedditPost) {
-    // if user already typed something, don’t overwrite
+    // don’t overwrite if user already typed something
     if (replyDrafts[post.id]) return;
 
-    setReplyLoading((prev) => ({ ...prev, [post.id]: true }));
     setError(null);
+    setAiLoading((prev) => ({ ...prev, [post.id]: true }));
 
     try {
       const res = await generateReplySuggestion({
@@ -116,20 +124,27 @@ export default function HomePage() {
         platform: "reddit",
       });
 
-      const suggestion = res.suggestion || "";
+      const suggestion =
+        (res && (res.suggestion || res.data?.suggestion)) || "";
+
+      if (!suggestion) {
+        setError("AI did not return a suggestion. Please try again.");
+        return;
+      }
 
       setReplyDrafts((prev) => ({
         ...prev,
         [post.id]: suggestion,
       }));
     } catch (err: any) {
-      console.error(err);
-      setError(
-        err.message ||
-          "Failed to generate AI suggestion. Please try again in a moment."
-      );
+      console.error("AI suggestion error", err);
+      setError("Could not generate suggestion. Please try again.");
     } finally {
-      setReplyLoading((prev) => ({ ...prev, [post.id]: false }));
+      setAiLoading((prev) => {
+        const copy = { ...prev };
+        delete copy[post.id];
+        return copy;
+      });
     }
   }
 
@@ -137,6 +152,7 @@ export default function HomePage() {
     const draft = replyDrafts[post.id]?.trim();
     if (!draft) return;
 
+    // For now: just mark as submitted + log to console (no external posting)
     console.log("Submitted reply for Reddit post", {
       postId: post.id,
       subreddit: post.subreddit,
@@ -147,6 +163,9 @@ export default function HomePage() {
     setSubmittedReplies((prev) => ({ ...prev, [post.id]: true }));
   }
 
+  // ------------------------------------------------------------
+  // UI
+  // ------------------------------------------------------------
   return (
     <main style={{ maxWidth: 960, margin: "0 auto", padding: "2rem 1rem" }}>
       <h1 style={{ fontSize: "2rem", fontWeight: 700, marginBottom: "1rem" }}>
@@ -228,7 +247,7 @@ export default function HomePage() {
             {redditResults.map((post) => {
               const redditPostUrl = `https://www.reddit.com/r/${post.subreddit}/comments/${post.id}`;
               const draft = replyDrafts[post.id] || "";
-              const isReplyLoading = replyLoading[post.id] || false;
+              const isAILoading = !!aiLoading[post.id];
 
               return (
                 <article
@@ -333,18 +352,17 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => handleGenerateSuggestion(post)}
-                        disabled={isReplyLoading}
+                        disabled={isAILoading}
                         style={{
                           fontSize: "0.75rem",
                           padding: "0.25rem 0.5rem",
                           borderRadius: 4,
                           border: "1px solid #e5e7eb",
-                          background: "#f9fafb",
-                          cursor: isReplyLoading ? "default" : "pointer",
-                          opacity: isReplyLoading ? 0.6 : 1,
+                          background: isAILoading ? "#e5e7eb" : "#f9fafb",
+                          cursor: isAILoading ? "default" : "pointer",
                         }}
                       >
-                        {isReplyLoading ? "Generating…" : "Generate suggestion"}
+                        {isAILoading ? "Generating…" : "Generate suggestion"}
                       </button>
                     </div>
 
@@ -599,7 +617,7 @@ export default function HomePage() {
               <article
                 key={fb.id}
                 style={{
-                  border: "1px solid #e5e7eb",
+                  border: "1px solid "#e5e7eb",
                   borderRadius: 8,
                   padding: "0.5rem 0.75rem",
                   background: "white",
