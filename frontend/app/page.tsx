@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import React, { useState } from "react";
 import {
   searchRedditPosts,
   searchTwitter,
@@ -66,7 +66,7 @@ export default function HomePage() {
     Record<string, boolean>
   >({});
 
-  async function handleSearch(e?: FormEvent<HTMLFormElement>) {
+  async function handleSearch(e?: React.FormEvent) {
     if (e) e.preventDefault();
     const k = keyword.trim();
     if (!k) return;
@@ -75,7 +75,6 @@ export default function HomePage() {
     setError(null);
 
     try {
-      // call all 4 platforms with the SAME keyword
       const [reddit, twitter, instagram, facebook] = await Promise.all([
         searchRedditPosts(k, 100),
         searchTwitter(k, 50),
@@ -101,7 +100,7 @@ export default function HomePage() {
 
   function handleGenerateSuggestion(post: RedditPost) {
     setReplyDrafts((prev) => {
-      if (prev[post.id]) return prev; // don’t overwrite if user already typed
+      if (prev[post.id]) return prev;
 
       const snippet =
         post.selftext && post.selftext.length > 180
@@ -123,7 +122,6 @@ export default function HomePage() {
     const draft = replyDrafts[post.id]?.trim();
     if (!draft) return;
 
-    // For now: just mark as submitted + log to console
     console.log("Submitted reply for Reddit post", {
       postId: post.id,
       subreddit: post.subreddit,
@@ -249,7 +247,10 @@ export default function HomePage() {
                       href={redditPostUrl}
                       target="_blank"
                       rel="noreferrer"
-                      style={{ fontSize: "0.75rem", textDecoration: "underline" }}
+                      style={{
+                        fontSize: "0.75rem",
+                        textDecoration: "underline",
+                      }}
                     >
                       View on Reddit
                     </a>
@@ -412,61 +413,65 @@ export default function HomePage() {
           </p>
         ) : (
           <div style={{ display: "grid", gap: "0.5rem" }}>
-            {twitterResults.map((tw) => (
-              <article
-                key={tw.id}
-                style={{
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 8,
-                  padding: "0.5rem 0.75rem",
-                  background: "white",
-                }}
-              >
-                <div
+            {twitterResults.map((tw) => {
+              const createdAt = tw.created_at
+                ? new Date(tw.created_at).toLocaleString()
+                : "";
+              return (
+                <article
+                  key={tw.id}
                   style={{
-                    fontSize: "0.8rem",
-                    color: "#6b7280",
-                    marginBottom: 4,
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 8,
+                    padding: "0.5rem 0.75rem",
+                    background: "white",
                   }}
                 >
-                  {tw.author || "@unknown"}
-                  {tw.created_at &&
-                    ` · ${new Date(tw.created_at).toLocaleString()}`}
-                </div>
-                <p
-                  style={{
-                    fontSize: "0.875rem",
-                    marginBottom: 4,
-                    whiteSpace: "pre-wrap",
-                  }}
-                >
-                  {getSocialText(tw)}
-                </p>
-                <div
-                  style={{
-                    fontSize: "0.75rem",
-                    color: "#6b7280",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <span>
-                    {typeof tw.likes === "number" ? `❤️ ${tw.likes}` : ""}
-                  </span>
-                  {tw.url && (
-                    <a
-                      href={tw.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ textDecoration: "underline" }}
-                    >
-                      View on X/Twitter
-                    </a>
-                  )}
-                </div>
-              </article>
-            ))}
+                  <div
+                    style={{
+                      fontSize: "0.8rem",
+                      color: "#6b7280",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {tw.author || "@unknown"}
+                    {createdAt && ` · ${createdAt}`}
+                  </div>
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      marginBottom: 4,
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
+                    {getSocialText(tw)}
+                  </p>
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#6b7280",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span>
+                      {typeof tw.likes === "number" ? `❤️ ${tw.likes}` : ""}
+                    </span>
+                    {tw.url && (
+                      <a
+                        href={tw.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ textDecoration: "underline" }}
+                      >
+                        View on X/Twitter
+                      </a>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </section>
@@ -494,61 +499,65 @@ export default function HomePage() {
           </p>
         ) : (
           <div style={{ display: "grid", gap: "0.5rem" }}>
-            {instagramResults.map((ig) => (
-              <article
-                key={ig.id}
-                style={{
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 8,
-                  padding: "0.5rem 0.75rem",
-                  background: "white",
-                }}
-              >
-                <div
+            {instagramResults.map((ig) => {
+              const createdAt = ig.created_at
+                ? new Date(ig.created_at).toLocaleString()
+                : "";
+              return (
+                <article
+                  key={ig.id}
                   style={{
-                    fontSize: "0.8rem",
-                    color: "#6b7280",
-                    marginBottom: 4,
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 8,
+                    padding: "0.5rem 0.75rem",
+                    background: "white",
                   }}
                 >
-                  {ig.username || "@unknown"}
-                  {ig.created_at &&
-                    ` · ${new Date(ig.created_at).toLocaleString()}`}
-                </div>
-                <p
-                  style={{
-                    fontSize: "0.875rem",
-                    marginBottom: 4,
-                    whiteSpace: "pre-wrap",
-                  }}
-                >
-                  {getSocialText(ig)}
-                </p>
-                <div
-                  style={{
-                    fontSize: "0.75rem",
-                    color: "#6b7280",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <span>
-                    {typeof ig.likes === "number" ? `❤️ ${ig.likes}` : ""}
-                  </span>
-                  {ig.url && (
-                    <a
-                      href={ig.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ textDecoration: "underline" }}
-                    >
-                      View on Instagram
-                    </a>
-                  )}
-                </div>
-              </article>
-            ))}
+                  <div
+                    style={{
+                      fontSize: "0.8rem",
+                      color: "#6b7280",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {ig.username || "@unknown"}
+                    {createdAt && ` · ${createdAt}`}
+                  </div>
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      marginBottom: 4,
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
+                    {getSocialText(ig)}
+                  </p>
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#6b7280",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span>
+                      {typeof ig.likes === "number" ? `❤️ ${ig.likes}` : ""}
+                    </span>
+                    {ig.url && (
+                      <a
+                        href={ig.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ textDecoration: "underline" }}
+                      >
+                        View on Instagram
+                      </a>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </section>
@@ -576,63 +585,67 @@ export default function HomePage() {
           </p>
         ) : (
           <div style={{ display: "grid", gap: "0.5rem" }}>
-            {facebookResults.map((fb) => (
-              <article
-                key={fb.id}
-                style={{
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 8,
-                  padding: "0.5rem 0.75rem",
-                  background: "white",
-                }}
-              >
-                <div
+            {facebookResults.map((fb) => {
+              const createdAt = fb.created_at
+                ? new Date(fb.created_at).toLocaleString()
+                : "";
+              return (
+                <article
+                  key={fb.id}
                   style={{
-                    fontSize: "0.8rem",
-                    color: "#6b7280",
-                    marginBottom: 4,
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 8,
+                    padding: "0.5rem 0.75rem",
+                    background: "white",
                   }}
                 >
-                  {fb.page || "FB Page"}
-                  {fb.created_at &&
-                    ` · ${new Date(fb.created_at).toLocaleString()}`}
-                </div>
-                <p
-                  style={{
-                    fontSize: "0.875rem",
-                    marginBottom: 4,
-                    whiteSpace: "pre-wrap",
-                  }}
-                >
-                  {getSocialText(fb)}
-                </p>
-                <div
-                  style={{
-                    fontSize: "0.75rem",
-                    color: "#6b7280",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <span>
-                    {typeof fb.reactions === "number"
-                      ? `👍 ${fb.reactions} reactions`
-                      : ""}
-                  </span>
-                  {fb.url && (
-                    <a
-                      href={fb.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ textDecoration: "underline" }}
-                    >
-                      View on Facebook
-                    </a>
-                  )}
-                </div>
-              </article>
-            ))}
+                  <div
+                    style={{
+                      fontSize: "0.8rem",
+                      color: "#6b7280",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {fb.page || "FB Page"}
+                    {createdAt && ` · ${createdAt}`}
+                  </div>
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      marginBottom: 4,
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
+                    {getSocialText(fb)}
+                  </p>
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#6b7280",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span>
+                      {typeof fb.reactions === "number"
+                        ? `👍 ${fb.reactions} reactions`
+                        : ""}
+                    </span>
+                    {fb.url && (
+                      <a
+                        href={fb.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ textDecoration: "underline" }}
+                      >
+                        View on Facebook
+                      </a>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </section>
