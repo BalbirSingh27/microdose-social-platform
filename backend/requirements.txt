@@ -6,6 +6,8 @@ uvicorn[standard]
 python-dotenv
 pydantic
 supabase
+openai>=1.56.0
+
 
 
 
