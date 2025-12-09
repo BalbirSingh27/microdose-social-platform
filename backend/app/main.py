@@ -1,7 +1,5 @@
-from openai import OpenAI
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 
 from .scraping import fetch_reddit_posts, store_posts_in_supabase
 from .scraping.twitter_scraper import fetch_twitter_posts
@@ -12,24 +10,14 @@ from ..supabase_client import supabase
 import os
 import requests
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
 load_dotenv()
-
-# ------------------------------------------------------------
-# FASTAPI INIT
-# ------------------------------------------------------------
 
 app = FastAPI(
     title="MCRDSE Social Listening API",
     version="0.3.0",
 )
-
-# ------------------------------------------------------------
-# OPENAI CLIENT
-# ------------------------------------------------------------
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=OPENAI_API_KEY)
 
 # ------------------------------------------------------------
 # CORS
@@ -49,8 +37,9 @@ app.add_middleware(
 )
 
 # ------------------------------------------------------------
-# HEALTH ENDPOINTS
+# Health + demo
 # ------------------------------------------------------------
+
 
 @app.get("/", tags=["health"])
 async def health_check():
@@ -66,95 +55,144 @@ async def hello(name: str = "world"):
 
 
 # ------------------------------------------------------------
-# SUPABASE TEST
+# Supabase test
 # ------------------------------------------------------------
+
 
 @app.get("/supabase-test", tags=["supabase"])
 async def supabase_test():
     """
-    Test connectivity with Supabase REST API.
+    Simple connectivity test with Supabase REST API.
     """
     supabase_url = os.getenv("SUPABASE_URL")
     supabase_key = os.getenv("SUPABASE_SERVICE_KEY")
 
     if not supabase_url or not supabase_key:
-        return {"status": "error", "message": "Missing Supabase variables"}
+        return {
+            "status": "error",
+            "message": "Missing Supabase environment variables",
+        }
 
-    table = "reddit_posts"
-    url = f"{supabase_url}/rest/v1/{table}"
+    table_name = "reddit_posts"
+    endpoint = f"{supabase_url}/rest/v1/{table_name}"
 
     headers = {
         "apikey": supabase_key,
         "Authorization": f"Bearer {supabase_key}",
     }
 
+    params = {
+        "select": "*",
+        "limit": 5,
+    }
+
     try:
-        resp = requests.get(url, headers=headers, timeout=10)
-        return {"status": "ok", "code": resp.status_code, "data": resp.json()}
+        resp = requests.get(endpoint, headers=headers, params=params, timeout=10)
+        return {
+            "status": "ok" if resp.status_code == 200 else "error",
+            "code": resp.status_code,
+            "data": resp.json() if resp.content else None,
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
 
 # ------------------------------------------------------------
-# SUPABASE REDDIT ENDPOINTS
+# Supabase Reddit endpoints
 # ------------------------------------------------------------
+
 
 @app.get("/supabase/reddit_posts", tags=["supabase"])
 async def get_reddit_posts(limit: int = Query(100, ge=1, le=500)):
+    """
+    Fetch Reddit posts from Supabase using supabase-py client.
+    """
     try:
-        response = supabase.table("reddit_posts").select("*").limit(limit).execute()
+        response = (
+            supabase
+            .table("reddit_posts")
+            .select("*")
+            .limit(limit)
+            .execute()
+        )
         return response.data
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/supabase/reddit_posts/search", tags=["supabase"])
 async def search_reddit_posts(
-    keyword: str = Query(...),
+    keyword: str = Query(..., min_length=1),
     limit: int = Query(100, ge=1, le=500),
 ):
+    """
+    Search reddit_posts by keyword in title or selftext.
+    Frontend will call this to support keyword search.
+    """
     try:
         pattern = f"%{keyword}%"
+
         response = (
-            supabase.table("reddit_posts")
+            supabase
+            .table("reddit_posts")
             .select("*")
             .or_(f"title.ilike.{pattern},selftext.ilike.{pattern}")
             .limit(limit)
             .execute()
         )
-        return {"keyword": keyword, "results": response.data}
+
+        return {
+            "keyword": keyword,
+            "results": response.data,
+        }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ------------------------------------------------------------
-# SCRAPER → REDDIT TO SUPABASE
+# Scraping (GET + POST) – Reddit → Supabase
 # ------------------------------------------------------------
+
 
 @app.api_route("/scrape/reddit", methods=["GET", "POST"], tags=["scraper"])
 def scrape_reddit(
-    q: str = Query("ai automation"),
-    limit: int = Query(20, ge=1, le=200),
+    q: str = Query("ai automation", description="Search query keyword"),
+    limit: int = Query(20, ge=1, le=200, description="Number of posts to fetch"),
 ):
+    """
+    Trigger Reddit scraping + store into Supabase.
+
+    Example:
+      GET https://mcrdse-api.onrender.com/scrape/reddit?q=microdosing&limit=50
+    """
     try:
         posts = fetch_reddit_posts(q, limit)
         result = store_posts_in_supabase(posts)
-        return {"status": "ok", "query": q, "inserted": result["inserted"]}
+        return {
+            "status": "ok",
+            "query": q,
+            "limit": limit,
+            "inserted": result["inserted"],
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ------------------------------------------------------------
-# TWITTER / INSTAGRAM / FACEBOOK DUMMY SEARCH
+# Twitter / Instagram / Facebook keyword search
 # ------------------------------------------------------------
+
 
 @app.get("/twitter/search", tags=["twitter"])
 def search_twitter(keyword: str, limit: int = 50):
     try:
+        posts = fetch_twitter_posts(keyword, limit)
         return {
             "platform": "twitter",
             "keyword": keyword,
-            "results": fetch_twitter_posts(keyword, limit),
+            "results": posts,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -163,10 +201,11 @@ def search_twitter(keyword: str, limit: int = 50):
 @app.get("/instagram/search", tags=["instagram"])
 def search_instagram(keyword: str, limit: int = 50):
     try:
+        posts = fetch_instagram_posts(keyword, limit)
         return {
             "platform": "instagram",
             "keyword": keyword,
-            "results": fetch_instagram_posts(keyword, limit),
+            "results": posts,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -175,18 +214,20 @@ def search_instagram(keyword: str, limit: int = 50):
 @app.get("/facebook/search", tags=["facebook"])
 def search_facebook(keyword: str, limit: int = 50):
     try:
+        posts = fetch_facebook_posts(keyword, limit)
         return {
             "platform": "facebook",
             "keyword": keyword,
-            "results": fetch_facebook_posts(keyword, limit),
+            "results": posts,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ------------------------------------------------------------
-# AI REPLY SUGGESTION ENDPOINT
+# AI-ish reply suggestion endpoint (no external provider)
 # ------------------------------------------------------------
+
 
 class ReplySuggestionRequest(BaseModel):
     title: str
@@ -195,55 +236,57 @@ class ReplySuggestionRequest(BaseModel):
     platform: str | None = "reddit"
 
 
+def build_local_reply(payload: ReplySuggestionRequest) -> str:
+    """
+    Simple rule-based reply generator.
+    No external API, just templates so it always works.
+    """
+
+    community = f"r/{payload.subreddit}" if payload.subreddit else "this community"
+
+    body = (payload.selftext or "").strip()
+    if len(body) > 500:
+        body = body[:500] + "..."
+
+    intro = f"Hey, thanks for sharing this in {community}."
+    title_line = f' I read your post titled "{payload.title}".'
+
+    if body:
+        body_line = (
+            " It sounds like you're putting a lot of thought into what you're experiencing, "
+            "and that takes courage."
+        )
+    else:
+        body_line = (
+            " I appreciate you opening up about this, even without a long description."
+        )
+
+    safety = (
+        " I can’t give medical or legal advice, but it may help to talk to a qualified "
+        "health professional or someone you trust who understands your situation."
+    )
+
+    close = (
+        " Whatever you decide, try to prioritise your safety, mental health and well-being. "
+        "Sending you good wishes."
+    )
+
+    return (intro + title_line + body_line + safety + close).strip()
+
+
 @app.post("/ai/reply-suggestion", tags=["ai"])
 async def ai_reply_suggestion(payload: ReplySuggestionRequest):
     """
-    Generate a short, safe, friendly reply suggestion using OpenAI.
+    Generate a safe, neutral reply suggestion for a given post
+    WITHOUT calling OpenAI or any external provider.
     """
-    if not OPENAI_API_KEY:
-        raise HTTPException(
-            status_code=500,
-            detail="OPENAI_API_KEY missing on server.",
-        )
-
-    body = (payload.selftext or "").strip()
-    if len(body) > 800:
-        body = body[:800] + "..."
-
-    prompt = f"""
-Write a short 2–4 sentence reply to an online post.
-
-Rules:
-- Be empathetic and supportive.
-- DO NOT give medical advice.
-- DO NOT encourage illegal substance use.
-- Keep it friendly, neutral, and safe.
-- Reply as a helpful human — not like an AI.
-
-Platform: {payload.platform}
-Subreddit: {payload.subreddit}
-
-Post Title:
-{payload.title}
-
-Post Body:
-{body}
-
-Your Reply:
-""".strip()
-
     try:
-        response = client.responses.create(
-            model="gpt-4.1-mini",
-            input=prompt,
-        )
-
-        reply_text = response.output[0].content[0].text
-
+        suggestion = build_local_reply(payload)
         return {
-            "suggestion": reply_text,
-            "platform": payload.platform,
+            "suggestion": suggestion,
+            "platform": payload.platform or "reddit",
+            "provider": "local-template",
         }
-
     except Exception as e:
+        # In case something weird happens, still avoid 500s in the UI
         raise HTTPException(status_code=500, detail=str(e))
