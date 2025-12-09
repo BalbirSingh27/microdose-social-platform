@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   searchRedditPosts,
   searchTwitter,
@@ -14,18 +14,55 @@ type RedditPost = {
   selftext: string;
   subreddit: string;
   created_utc?: string;
+  score?: number;
+  num_comments?: number;
 };
+
+type TwitterPost = {
+  id: string;
+  author?: string;
+  text?: string;
+  likes?: number;
+  url?: string;
+  created_at?: string;
+};
+
+type InstagramPost = {
+  id: string;
+  username?: string;
+  caption?: string;
+  likes?: number;
+  url?: string;
+  created_at?: string;
+};
+
+type FacebookPost = {
+  id: string;
+  page?: string;
+  message?: string;
+  reactions?: number;
+  url?: string;
+  created_at?: string;
+};
+
+function getSocialText(post: any): string {
+  return post.text || post.caption || post.message || "";
+}
 
 export default function HomePage() {
   const [keyword, setKeyword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const [redditResults, setRedditResults] = useState<RedditPost[]>([]);
-  const [twitterResults, setTwitterResults] = useState<any[]>([]);
-  const [instagramResults, setInstagramResults] = useState<any[]>([]);
-  const [facebookResults, setFacebookResults] = useState<any[]>([]);
+  const [twitterResults, setTwitterResults] = useState<TwitterPost[]>([]);
+  const [instagramResults, setInstagramResults] = useState<InstagramPost[]>([]);
+  const [facebookResults, setFacebookResults] = useState<FacebookPost[]>([]);
 
   const [error, setError] = useState<string | null>(null);
+
+  // reply drafts + submitted state for Reddit
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+  const [submittedReplies, setSubmittedReplies] = useState<Record<string, boolean>>({});
 
   async function handleSearch(e?: React.FormEvent) {
     if (e) e.preventDefault();
@@ -36,7 +73,7 @@ export default function HomePage() {
     setError(null);
 
     try {
-      // 🔥 Call all 4 backends with the SAME keyword
+      // call all 4 platforms with the SAME keyword
       const [reddit, twitter, instagram, facebook] = await Promise.all([
         searchRedditPosts(k, 100),
         searchTwitter(k, 50),
@@ -44,10 +81,10 @@ export default function HomePage() {
         searchFacebook(k, 50),
       ]);
 
-      setRedditResults(reddit.results || reddit || []);
-      setTwitterResults(twitter.results || []);
-      setInstagramResults(instagram.results || []);
-      setFacebookResults(facebook.results || []);
+      setRedditResults((reddit.results || reddit || []) as RedditPost[]);
+      setTwitterResults((twitter.results || []) as TwitterPost[]);
+      setInstagramResults((instagram.results || []) as InstagramPost[]);
+      setFacebookResults((facebook.results || []) as FacebookPost[]);
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Something went wrong.");
@@ -56,16 +93,56 @@ export default function HomePage() {
     }
   }
 
+  function handleChangeReply(postId: string, value: string) {
+    setReplyDrafts((prev) => ({ ...prev, [postId]: value }));
+  }
+
+  function handleGenerateSuggestion(post: RedditPost) {
+    setReplyDrafts((prev) => {
+      if (prev[post.id]) return prev; // don’t overwrite if user already typed
+
+      const snippet =
+        post.selftext && post.selftext.length > 180
+          ? post.selftext.slice(0, 180).replace(/\s+/g, " ") + "..."
+          : post.selftext || "";
+
+      const suggestion =
+        `Hey, thanks for sharing this post in r/${post.subreddit} about "${post.title}". ` +
+        (snippet
+          ? `Here’s a supportive, on-topic reply based on what you wrote:\n\n${snippet}\n\n`
+          : "") +
+        `Let me know if you'd like more resources or perspectives around this topic.`;
+
+      return { ...prev, [post.id]: suggestion };
+    });
+  }
+
+  function handleSubmitReply(post: RedditPost) {
+    const draft = replyDrafts[post.id]?.trim();
+    if (!draft) return;
+
+    // For now: just mark as submitted + log to console
+    console.log("Submitted reply for Reddit post", {
+      postId: post.id,
+      subreddit: post.subreddit,
+      title: post.title,
+      reply: draft,
+    });
+
+    setSubmittedReplies((prev) => ({ ...prev, [post.id]: true }));
+  }
+
   return (
     <main style={{ maxWidth: 960, margin: "0 auto", padding: "2rem 1rem" }}>
       <h1 style={{ fontSize: "2rem", fontWeight: 700, marginBottom: "1rem" }}>
-        MCRDSE – Reddit Keyword Search
+        MCRDSE – Social Listening & Reply Helper
       </h1>
 
       <p style={{ marginBottom: "1rem" }}>
         Enter a keyword like <strong>“microdosing”</strong>,{" "}
         <strong>“psilocybin”</strong>, or <strong>“magic mushrooms”</strong> to
-        search Reddit (and demo Twitter / Instagram / Facebook).
+        search Reddit (and demo Twitter / Instagram / Facebook), then draft
+        replies directly in this dashboard.
       </p>
 
       <form
@@ -115,7 +192,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Reddit results */}
+      {/* Reddit results + reply helper */}
       <section style={{ marginBottom: "2rem" }}>
         <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: 8 }}>
           Reddit Results ({redditResults.length})
@@ -133,60 +210,192 @@ export default function HomePage() {
               gridTemplateColumns: "1fr",
             }}
           >
-            {redditResults.map((post) => (
-              <article
-                key={post.id}
-                style={{
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 8,
-                  padding: "0.75rem 1rem",
-                  background: "white",
-                }}
-              >
-                <div
+            {redditResults.map((post) => {
+              const redditPostUrl = `https://www.reddit.com/r/${post.subreddit}/comments/${post.id}`;
+              const draft = replyDrafts[post.id] || "";
+
+              return (
+                <article
+                  key={post.id}
                   style={{
-                    fontSize: "0.75rem",
-                    color: "#6b7280",
-                    marginBottom: 4,
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 8,
+                    padding: "0.75rem 1rem",
+                    background: "white",
                   }}
                 >
-                  r/{post.subreddit}
-                </div>
-                <h3
-                  style={{
-                    fontSize: "1rem",
-                    fontWeight: 600,
-                    marginBottom: 4,
-                  }}
-                >
-                  {post.title}
-                </h3>
-                {post.selftext && (
-                  <p
+                  <div
                     style={{
-                      fontSize: "0.875rem",
-                      color: "#4b5563",
-                      maxHeight: "4.5rem",
-                      overflow: "hidden",
+                      fontSize: "0.75rem",
+                      color: "#6b7280",
+                      marginBottom: 4,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 8,
                     }}
                   >
-                    {post.selftext}
-                  </p>
-                )}
-              </article>
-            ))}
+                    <a
+                      href={`https://www.reddit.com/r/${post.subreddit}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ textDecoration: "underline" }}
+                    >
+                      r/{post.subreddit}
+                    </a>
+                    <a
+                      href={redditPostUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ fontSize: "0.75rem", textDecoration: "underline" }}
+                    >
+                      View on Reddit
+                    </a>
+                  </div>
+
+                  <h3
+                    style={{
+                      fontSize: "1rem",
+                      fontWeight: 600,
+                      marginBottom: 4,
+                    }}
+                  >
+                    {post.title}
+                  </h3>
+
+                  {post.selftext && (
+                    <p
+                      style={{
+                        fontSize: "0.875rem",
+                        color: "#4b5563",
+                        whiteSpace: "pre-wrap",
+                        marginBottom: "0.5rem",
+                      }}
+                    >
+                      {post.selftext}
+                    </p>
+                  )}
+
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#6b7280",
+                      marginBottom: "0.5rem",
+                    }}
+                  >
+                    {typeof post.score === "number" && (
+                      <span style={{ marginRight: "0.75rem" }}>
+                        🔼 {post.score} score
+                      </span>
+                    )}
+                    {typeof post.num_comments === "number" && (
+                      <span>💬 {post.num_comments} comments</span>
+                    )}
+                  </div>
+
+                  {/* Reply helper */}
+                  <div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 4,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "0.9rem",
+                          fontWeight: 500,
+                        }}
+                      >
+                        Suggested reply
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleGenerateSuggestion(post)}
+                        style={{
+                          fontSize: "0.75rem",
+                          padding: "0.25rem 0.5rem",
+                          borderRadius: 4,
+                          border: "1px solid #e5e7eb",
+                          background: "#f9fafb",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Generate suggestion
+                      </button>
+                    </div>
+
+                    <textarea
+                      value={draft}
+                      onChange={(e) =>
+                        handleChangeReply(post.id, e.target.value)
+                      }
+                      placeholder="Type or generate a reply that you can copy & paste into Reddit…"
+                      style={{
+                        width: "100%",
+                        minHeight: 80,
+                        fontSize: "0.85rem",
+                        padding: "0.5rem",
+                        borderRadius: 6,
+                        border: "1px solid #d1d5db",
+                        marginBottom: 4,
+                        resize: "vertical",
+                      }}
+                    />
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleSubmitReply(post)}
+                        style={{
+                          fontSize: "0.85rem",
+                          padding: "0.35rem 0.85rem",
+                          borderRadius: 4,
+                          border: "none",
+                          background: "#0f766e",
+                          color: "white",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Submit reply (save in dashboard)
+                      </button>
+
+                      {submittedReplies[post.id] && (
+                        <span
+                          style={{
+                            fontSize: "0.75rem",
+                            color: "#16a34a",
+                          }}
+                        >
+                          ✅ Reply saved – copy & paste into Reddit
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </section>
 
-      {/* Simple headers for the other platforms (demo data for now) */}
-      <section style={{ marginBottom: "1rem" }}>
+      {/* Twitter */}
+      <section style={{ marginBottom: "1.5rem" }}>
         <h3
           style={{
             fontSize: "1rem",
             fontWeight: 600,
             display: "flex",
             justifyContent: "space-between",
+            marginBottom: 6,
           }}
         >
           <span>Twitter</span>
@@ -194,15 +403,78 @@ export default function HomePage() {
             {twitterResults.length} results
           </span>
         </h3>
+
+        {twitterResults.length === 0 ? (
+          <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>
+            No Twitter posts fetched for this keyword yet.
+          </p>
+        ) : (
+          <div style={{ display: "grid", gap: "0.5rem" }}>
+            {twitterResults.map((tw) => (
+              <article
+                key={tw.id}
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 8,
+                  padding: "0.5rem 0.75rem",
+                  background: "white",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "0.8rem",
+                    color: "#6b7280",
+                    marginBottom: 4,
+                  }}
+                >
+                  {tw.author || "@unknown"}
+                  {tw.created_at && ` · ${new Date(tw.created_at).toLocaleString()}`}
+                </div>
+                <p
+                  style={{
+                    fontSize: "0.875rem",
+                    marginBottom: 4,
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {getSocialText(tw)}
+                </p>
+                <div
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "#6b7280",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <span>{typeof tw.likes === "number" ? `❤️ ${tw.likes}` : ""}</span>
+                  {tw.url && (
+                    <a
+                      href={tw.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ textDecoration: "underline" }}
+                    >
+                      View on X/Twitter
+                    </a>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
-      <section style={{ marginBottom: "1rem" }}>
+      {/* Instagram */}
+      <section style={{ marginBottom: "1.5rem" }}>
         <h3
           style={{
             fontSize: "1rem",
             fontWeight: 600,
             display: "flex",
             justifyContent: "space-between",
+            marginBottom: 6,
           }}
         >
           <span>Instagram</span>
@@ -210,15 +482,80 @@ export default function HomePage() {
             {instagramResults.length} results
           </span>
         </h3>
+
+        {instagramResults.length === 0 ? (
+          <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>
+            No Instagram posts fetched for this keyword yet.
+          </p>
+        ) : (
+          <div style={{ display: "grid", gap: "0.5rem" }}>
+            {instagramResults.map((ig) => (
+              <article
+                key={ig.id}
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 8,
+                  padding: "0.5rem 0.75rem",
+                  background: "white",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "0.8rem",
+                    color: "#6b7280",
+                    marginBottom: 4,
+                  }}
+                >
+                  {ig.username || "@unknown"}
+                  {ig.created_at && ` · ${new Date(ig.created_at).toLocaleString()}`}
+                </div>
+                <p
+                  style={{
+                    fontSize: "0.875rem",
+                    marginBottom: 4,
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {getSocialText(ig)}
+                </p>
+                <div
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "#6b7280",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <span>
+                    {typeof ig.likes === "number" ? `❤️ ${ig.likes}` : ""}
+                  </span>
+                  {ig.url && (
+                    <a
+                      href={ig.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ textDecoration: "underline" }}
+                    >
+                      View on Instagram
+                    </a>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
-      <section style={{ marginBottom: "1rem" }}>
+      {/* Facebook */}
+      <section style={{ marginBottom: "1.5rem" }}>
         <h3
           style={{
             fontSize: "1rem",
             fontWeight: 600,
             display: "flex",
             justifyContent: "space-between",
+            marginBottom: 6,
           }}
         >
           <span>Facebook</span>
@@ -226,6 +563,71 @@ export default function HomePage() {
             {facebookResults.length} results
           </span>
         </h3>
+
+        {facebookResults.length === 0 ? (
+          <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>
+            No Facebook posts fetched for this keyword yet.
+          </p>
+        ) : (
+          <div style={{ display: "grid", gap: "0.5rem" }}>
+            {facebookResults.map((fb) => (
+              <article
+                key={fb.id}
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 8,
+                  padding: "0.5rem 0.75rem",
+                  background: "white",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "0.8rem",
+                    color: "#6b7280",
+                    marginBottom: 4,
+                  }}
+                >
+                  {fb.page || "FB Page"}
+                  {fb.created_at && ` · ${new Date(fb.created_at).toLocaleString()}`}
+                </div>
+                <p
+                  style={{
+                    fontSize: "0.875rem",
+                    marginBottom: 4,
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {getSocialText(fb)}
+                </p>
+                <div
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "#6b7280",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <span>
+                    {typeof fb.reactions === "number"
+                      ? `👍 ${fb.reactions} reactions`
+                      : ""}
+                  </span>
+                  {fb.url && (
+                    <a
+                      href={fb.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ textDecoration: "underline" }}
+                    >
+                      View on Facebook
+                    </a>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
     </main>
   );
