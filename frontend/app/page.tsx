@@ -62,7 +62,9 @@ export default function HomePage() {
 
   // reply drafts + submitted state for Reddit
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
-  const [submittedReplies, setSubmittedReplies] = useState<Record<string, boolean>>({});
+  const [submittedReplies, setSubmittedReplies] = useState<
+    Record<string, boolean>
+  >({});
 
   async function handleSearch(e?: React.FormEvent) {
     if (e) e.preventDefault();
@@ -428,7 +430,8 @@ export default function HomePage() {
                   }}
                 >
                   {tw.author || "@unknown"}
-                  {tw.created_at && ` · ${new Date(tw.created_at).toLocaleString()}`}
+                  {tw.created_at &&
+                    ` · ${new Date(tw.created_at).toLocaleString()}`}
                 </div>
                 <p
                   style={{
@@ -448,7 +451,9 @@ export default function HomePage() {
                     alignItems: "center",
                   }}
                 >
-                  <span>{typeof tw.likes === "number" ? `❤️ ${tw.likes}` : ""}</span>
+                  <span>
+                    {typeof tw.likes === "number" ? `❤️ ${tw.likes}` : ""}
+                  </span>
                   {tw.url && (
                     <a
                       href={tw.url}
@@ -507,7 +512,8 @@ export default function HomePage() {
                   }}
                 >
                   {ig.username || "@unknown"}
-                  {ig.created_at && ` · ${new Date(ig.created_at).toLocaleString()}`}
+                  {ig.created_at &&
+                    ` · ${new Date(ig.created_at).toLocaleString()}`}
                 </div>
                 <p
                   style={{
@@ -588,7 +594,8 @@ export default function HomePage() {
                   }}
                 >
                   {fb.page || "FB Page"}
-                  {fb.created_at && ` · ${new Date(fb.created_at).toLocaleString()}`}
+                  {fb.created_at &&
+                    ` · ${new Date(fb.created_at).toLocaleString()}`}
                 </div>
                 <p
                   style={{
