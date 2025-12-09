@@ -11,6 +11,7 @@ from ..supabase_client import supabase
 import os
 import requests
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
 load_dotenv()
 
@@ -18,6 +19,9 @@ app = FastAPI(
     title="MCRDSE Social Listening API",
     version="0.2.0",
 )
+
+# OpenAI client (for AI reply suggestions)
+client = OpenAI()
 
 # ------------------------------------------------------------
 # CORS
@@ -77,8 +81,8 @@ async def supabase_test():
     endpoint = f"{supabase_url}/rest/v1/{table_name}"
 
     headers = {
-        "apikey": supabase_key,
-        "Authorization": f"Bearer {supabase_key}",
+            "apikey": supabase_key,
+            "Authorization": f"Bearer {supabase_key}",
     }
 
     params = {
@@ -220,6 +224,80 @@ def search_facebook(keyword: str, limit: int = 50):
             "platform": "facebook",
             "keyword": keyword,
             "results": posts,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ------------------------------------------------------------
+# AI reply suggestion endpoint (Week 2, Step 1)
+# ------------------------------------------------------------
+
+class ReplySuggestionRequest(BaseModel):
+    title: str
+    selftext: str | None = None
+    subreddit: str | None = None
+    platform: str | None = "reddit"
+
+
+@app.post("/ai/reply-suggestion", tags=["ai"])
+async def ai_reply_suggestion(payload: ReplySuggestionRequest):
+    """
+    Generate a safe, neutral reply suggestion for a given post
+    using the OpenAI API. This does NOT post to Reddit/Twitter;
+    it only returns text for the dashboard.
+    """
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="OPENAI_API_KEY is not set on the server.",
+        )
+
+    body_snippet = (payload.selftext or "").strip()
+    if len(body_snippet) > 800:
+        body_snippet = body_snippet[:800] + "..."
+
+    prompt = f"""
+You are helping a marketing / community manager craft a short, safe reply
+to an online post about microdosing, psychedelics, wellness, or mental health.
+
+Platform: {payload.platform or "reddit"}
+Subreddit or community: {payload.subreddit or "(not specified)"}
+
+Post title:
+{payload.title}
+
+Post body:
+{body_snippet if body_snippet else "(no body text provided)"}
+
+Write a 2–4 sentence reply that:
+- Is empathetic and non-judgmental.
+- Does NOT give medical advice or tell people to use illegal substances.
+- Encourages responsible behavior and, where relevant, consulting qualified health professionals.
+- Sounds like a human, not a robot, and is easy to paste as a reply.
+
+Return ONLY the reply text, nothing else.
+""".strip()
+
+    try:
+        resp = client.responses.create(
+            model="gpt-4.1-mini",
+            input=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt}
+                    ],
+                }
+            ],
+        )
+
+        suggestion = resp.output[0].content[0].text
+
+        return {
+            "suggestion": suggestion,
+            "platform": payload.platform or "reddit",
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
