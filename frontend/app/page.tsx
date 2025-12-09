@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState, FormEvent } from "react";
 import {
   searchRedditPosts,
   searchTwitter,
@@ -62,10 +62,11 @@ export default function HomePage() {
 
   // reply drafts + submitted state for Reddit
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
-  const [submittedReplies, setSubmittedReplies] =
-    useState<Record<string, boolean>>({});
+  const [submittedReplies, setSubmittedReplies] = useState<
+    Record<string, boolean>
+  >({});
 
-  async function handleSearch(e?: React.FormEvent) {
+  async function handleSearch(e?: FormEvent<HTMLFormElement>) {
     if (e) e.preventDefault();
     const k = keyword.trim();
     if (!k) return;
@@ -248,10 +249,7 @@ export default function HomePage() {
                       href={redditPostUrl}
                       target="_blank"
                       rel="noreferrer"
-                      style={{
-                        fontSize: "0.75rem",
-                        textDecoration: "underline",
-                      }}
+                      style={{ fontSize: "0.75rem", textDecoration: "underline" }}
                     >
                       View on Reddit
                     </a>
