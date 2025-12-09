@@ -225,7 +225,7 @@ def search_facebook(keyword: str, limit: int = 50):
 
 
 # ------------------------------------------------------------
-# AI-ish reply suggestion endpoint (no external provider)
+# AI reply suggestion endpoint (no external API)
 # ------------------------------------------------------------
 
 
@@ -236,57 +236,66 @@ class ReplySuggestionRequest(BaseModel):
     platform: str | None = "reddit"
 
 
-def build_local_reply(payload: ReplySuggestionRequest) -> str:
-    """
-    Simple rule-based reply generator.
-    No external API, just templates so it always works.
-    """
-
-    community = f"r/{payload.subreddit}" if payload.subreddit else "this community"
-
+def build_local_suggestion(payload: ReplySuggestionRequest) -> str:
+    """Generate a simple, safe reply without calling any external AI."""
     body = (payload.selftext or "").strip()
-    if len(body) > 500:
-        body = body[:500] + "..."
 
-    intro = f"Hey, thanks for sharing this in {community}."
-    title_line = f' I read your post titled "{payload.title}".'
+    # Short body snippet for context
+    snippet = body
+    if len(snippet) > 260:
+        snippet = snippet[:260].replace("\n", " ").strip() + "..."
 
-    if body:
-        body_line = (
-            " It sounds like you're putting a lot of thought into what you're experiencing, "
-            "and that takes courage."
+    base = (
+        f"Hey, thanks for sharing this post in r/{payload.subreddit or 'this community'} "
+        f"about \"{payload.title}\". "
+    )
+
+    # Tiny bit of rule-based personalization
+    extra = ""
+    lower = body.lower()
+
+    if any(word in lower for word in ["anxious", "anxiety", "depressed", "depression", "struggle"]):
+        extra = (
+            "It sounds like you’re going through a lot emotionally. "
+            "I’m really glad you felt comfortable opening up here. "
+        )
+    elif any(word in lower for word in ["win", "success", "improved", "better", "progress"]):
+        extra = (
+            "It’s great to hear about the progress you’re seeing. "
+            "Wins like this can be really motivating for others reading your post. "
         )
     else:
-        body_line = (
-            " I appreciate you opening up about this, even without a long description."
+        extra = (
+            "Your experience adds valuable perspective to the conversation. "
         )
 
     safety = (
-        " I can’t give medical or legal advice, but it may help to talk to a qualified "
-        "health professional or someone you trust who understands your situation."
+        "None of this is medical advice, but it may help to keep listening to your body, "
+        "go slowly, and talk to a qualified professional if you’re unsure about anything. "
+        "Thanks again for sharing and take care 🙏"
     )
 
-    close = (
-        " Whatever you decide, try to prioritise your safety, mental health and well-being. "
-        "Sending you good wishes."
-    )
+    if snippet:
+        context_line = f"From what you wrote ({snippet}), here's a supportive reply you could use: "
+    else:
+        context_line = "Here’s a short, supportive reply you could use: "
 
-    return (intro + title_line + body_line + safety + close).strip()
+    return base + extra + context_line + safety
 
 
 @app.post("/ai/reply-suggestion", tags=["ai"])
 async def ai_reply_suggestion(payload: ReplySuggestionRequest):
     """
-    Generate a safe, neutral reply suggestion for a given post
-    WITHOUT calling OpenAI or any external provider.
+    Generate a safe, neutral reply suggestion for a given post.
+
+    NOTE: This version does NOT call OpenAI or any external LLM.
+    It uses simple Python logic so it is free and has no quota.
     """
     try:
-        suggestion = build_local_reply(payload)
+        suggestion = build_local_suggestion(payload)
         return {
             "suggestion": suggestion,
             "platform": payload.platform or "reddit",
-            "provider": "local-template",
         }
     except Exception as e:
-        # In case something weird happens, still avoid 500s in the UI
         raise HTTPException(status_code=500, detail=str(e))
