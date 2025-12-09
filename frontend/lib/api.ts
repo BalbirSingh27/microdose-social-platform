@@ -1,57 +1,35 @@
-{redditResults.map((post) => {
-  const redditUrl = `https://www.reddit.com/r/${post.subreddit}/comments/${post.id}`;
 
-  return (
-    <article
-      key={post.id}
-      style={{
-        border: "1px solid #e5e7eb",
-        borderRadius: 8,
-        padding: "0.75rem 1rem",
-        background: "white",
-      }}
-    >
-      <div
-        style={{
-          fontSize: "0.75rem",
-          color: "#6b7280",
-          marginBottom: 4,
-        }}
-      >
-        r/{post.subreddit}
-      </div>
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  "https://mcrdse-api.onrender.com";
 
-      {/* 🔗 Clickable title that opens the Reddit post */}
-      <h3
-        style={{
-          fontSize: "1rem",
-          fontWeight: 600,
-          marginBottom: 4,
-        }}
-      >
-        <a
-          href={redditUrl}
-          target="_blank"
-          rel="noreferrer"
-          style={{ textDecoration: "underline", color: "#1d4ed8" }}
-        >
-          {post.title}
-        </a>
-      </h3>
+async function getJson(path: string) {
+  const res = await fetch(`${API_BASE}${path}`);
 
-      {/* Full selftext, not truncated */}
-      {post.selftext && (
-        <p
-          style={{
-            fontSize: "0.875rem",
-            color: "#4b5563",
-            whiteSpace: "pre-wrap",
-            marginBottom: "0.5rem",
-          }}
-        >
-          {post.selftext}
-        </p>
-      )}
-    </article>
-  );
-})}
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Request failed: ${res.status} ${text}`);
+  }
+
+  return res.json();
+}
+
+export async function searchRedditPosts(keyword: string, limit = 100) {
+  const q = encodeURIComponent(keyword);
+  return getJson(`/supabase/reddit_posts/search?keyword=${q}&limit=${limit}`);
+}
+
+export async function searchTwitter(keyword: string, limit = 50) {
+  const q = encodeURIComponent(keyword);
+  return getJson(`/twitter/search?keyword=${q}&limit=${limit}`);
+}
+
+export async function searchInstagram(keyword: string, limit = 50) {
+  const q = encodeURIComponent(keyword);
+  return getJson(`/instagram/search?keyword=${q}&limit=${limit}`);
+}
+
+export async function searchFacebook(keyword: string, limit = 50) {
+  const q = encodeURIComponent(keyword);
+  return getJson(`/facebook/search?keyword=${q}&limit=${limit}`);
+}
