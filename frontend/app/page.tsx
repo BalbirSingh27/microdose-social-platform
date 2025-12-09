@@ -55,16 +55,17 @@ export default function HomePage() {
 
   const [redditResults, setRedditResults] = useState<RedditPost[]>([]);
   const [twitterResults, setTwitterResults] = useState<TwitterPost[]>([]);
-  const [instagramResults, setInstagramResults] = useState<InstagramPost[]>([]);
-  const [facebookResults, setFacebookResults] = useState<FacebookPost[]>([]);
+  const [instagramResults, setInstagramResults] =
+    useState<InstagramPost[]>([]);
+  const [facebookResults, setFacebookResults] =
+    useState<FacebookPost[]>([]);
 
   const [error, setError] = useState<string | null>(null);
 
   // reply drafts + submitted state for Reddit
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
-  const [submittedReplies, setSubmittedReplies] = useState<
-    Record<string, boolean>
-  >({});
+  const [submittedReplies, setSubmittedReplies] =
+    useState<Record<string, boolean>>({});
 
   async function handleSearch(e?: React.FormEvent) {
     if (e) e.preventDefault();
@@ -85,8 +86,12 @@ export default function HomePage() {
 
       setRedditResults((reddit.results || reddit || []) as RedditPost[]);
       setTwitterResults((twitter.results || []) as TwitterPost[]);
-      setInstagramResults((instagram.results || []) as InstagramPost[]);
-      setFacebookResults((facebook.results || []) as FacebookPost[]);
+      setInstagramResults(
+        (instagram.results || []) as InstagramPost[]
+      );
+      setFacebookResults(
+        (facebook.results || []) as FacebookPost[]
+      );
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Something went wrong.");
@@ -123,7 +128,6 @@ export default function HomePage() {
     const draft = replyDrafts[post.id]?.trim();
     if (!draft) return;
 
-    // For now: just mark as submitted + log to console
     console.log("Submitted reply for Reddit post", {
       postId: post.id,
       subreddit: post.subreddit,
@@ -143,7 +147,7 @@ export default function HomePage() {
       <p style={{ marginBottom: "1rem" }}>
         Enter a keyword like <strong>“microdosing”</strong>,{" "}
         <strong>“psilocybin”</strong>, or <strong>“magic mushrooms”</strong> to
-        search Reddit (and demo Twitter / Instagram / Facebook), then draft
+        search Reddit (and Twitter / Instagram / Facebook), then draft
         replies directly in this dashboard.
       </p>
 
@@ -249,7 +253,10 @@ export default function HomePage() {
                       href={redditPostUrl}
                       target="_blank"
                       rel="noreferrer"
-                      style={{ fontSize: "0.75rem", textDecoration: "underline" }}
+                      style={{
+                        fontSize: "0.75rem",
+                        textDecoration: "underline",
+                      }}
                     >
                       View on Reddit
                     </a>
