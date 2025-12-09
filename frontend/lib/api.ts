@@ -1,4 +1,3 @@
-// frontend/lib/api.ts
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -31,27 +30,35 @@ export async function searchFacebook(keyword: string, limit = 50) {
   return getJson(`/facebook/search?keyword=${q}&limit=${limit}`);
 }
 
-// NEW: call backend AI endpoint
+/**
+ * Local “AI-like” suggestion generator.
+ * No OpenAI, no external API call, no env keys needed.
+ */
 export async function generateReplySuggestion(post: {
   title: string;
   selftext?: string;
   subreddit?: string;
-}) {
-  const res = await fetch(`${API_BASE}/ai/reply-suggestion`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      title: post.title,
-      selftext: post.selftext || "",
-      subreddit: post.subreddit || "",
-      platform: "reddit",
-    }),
-  });
+}): Promise<{ suggestion: string }> {
+  const cleanBody = (post.selftext || "").replace(/\s+/g, " ").trim();
+  const snippet =
+    cleanBody.length > 220 ? cleanBody.slice(0, 220).trim() + "…" : cleanBody;
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`AI suggestion failed: ${res.status} ${text}`);
-  }
+  const subredditPart = post.subreddit
+    ? ` in r/${post.subreddit}`
+    : "";
 
-  return res.json() as Promise<{ suggestion: string }>;
+  const bodyPart = snippet
+    ? ` From what you shared — “${snippet}” — it sounds like you’re being thoughtful about your experience and how it affects your day-to-day life.`
+    : "";
+
+  const suggestion = [
+    `Hey, thanks for opening up about "${post.title}"${subredditPart}.`,
+    bodyPart,
+    ` I’m not able to give medical or legal advice, but it could really help to keep tracking how you feel over time and, if you can, speak with a qualified professional who understands mental health and/or psychedelic use.`,
+    ` Either way, you’re not alone in exploring this and it’s great that you’re seeking more information.`
+  ]
+    .join(" ")
+    .trim();
+
+  return { suggestion };
 }
