@@ -62,9 +62,8 @@ export default function HomePage() {
 
   // reply drafts + submitted state for Reddit
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
-  const [submittedReplies, setSubmittedReplies] = useState<
-    Record<string, boolean>
-  >({});
+  const [submittedReplies, setSubmittedReplies] =
+    useState<Record<string, boolean>>({});
 
   async function handleSearch(e?: React.FormEvent) {
     if (e) e.preventDefault();
@@ -75,6 +74,7 @@ export default function HomePage() {
     setError(null);
 
     try {
+      // call all 4 platforms with the SAME keyword
       const [reddit, twitter, instagram, facebook] = await Promise.all([
         searchRedditPosts(k, 100),
         searchTwitter(k, 50),
@@ -122,7 +122,7 @@ export default function HomePage() {
     const draft = replyDrafts[post.id]?.trim();
     if (!draft) return;
 
-    // For now we just log + mark as saved (dashboard-style)
+    // For now: just mark as submitted + log to console
     console.log("Submitted reply for Reddit post", {
       postId: post.id,
       subreddit: post.subreddit,
@@ -193,7 +193,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* REDDIT + reply helper */}
+      {/* Reddit results + reply helper */}
       <section style={{ marginBottom: "2rem" }}>
         <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: 8 }}>
           Reddit Results ({redditResults.length})
@@ -236,7 +236,6 @@ export default function HomePage() {
                       gap: 8,
                     }}
                   >
-                    {/* clickable subreddit link */}
                     <a
                       href={`https://www.reddit.com/r/${post.subreddit}`}
                       target="_blank"
@@ -245,13 +244,14 @@ export default function HomePage() {
                     >
                       r/{post.subreddit}
                     </a>
-
-                    {/* clickable post link */}
                     <a
                       href={redditPostUrl}
                       target="_blank"
                       rel="noreferrer"
-                      style={{ fontSize: "0.75rem", textDecoration: "underline" }}
+                      style={{
+                        fontSize: "0.75rem",
+                        textDecoration: "underline",
+                      }}
                     >
                       View on Reddit
                     </a>
@@ -391,7 +391,7 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* TWITTER */}
+      {/* Twitter */}
       <section style={{ marginBottom: "1.5rem" }}>
         <h3
           style={{
@@ -473,7 +473,7 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* INSTAGRAM */}
+      {/* Instagram */}
       <section style={{ marginBottom: "1.5rem" }}>
         <h3
           style={{
@@ -555,7 +555,7 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* FACEBOOK */}
+      {/* Facebook */}
       <section style={{ marginBottom: "1.5rem" }}>
         <h3
           style={{
