@@ -55,17 +55,16 @@ export default function HomePage() {
 
   const [redditResults, setRedditResults] = useState<RedditPost[]>([]);
   const [twitterResults, setTwitterResults] = useState<TwitterPost[]>([]);
-  const [instagramResults, setInstagramResults] =
-    useState<InstagramPost[]>([]);
-  const [facebookResults, setFacebookResults] =
-    useState<FacebookPost[]>([]);
+  const [instagramResults, setInstagramResults] = useState<InstagramPost[]>([]);
+  const [facebookResults, setFacebookResults] = useState<FacebookPost[]>([]);
 
   const [error, setError] = useState<string | null>(null);
 
   // reply drafts + submitted state for Reddit
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
-  const [submittedReplies, setSubmittedReplies] =
-    useState<Record<string, boolean>>({});
+  const [submittedReplies, setSubmittedReplies] = useState<
+    Record<string, boolean>
+  >({});
 
   async function handleSearch(e?: React.FormEvent) {
     if (e) e.preventDefault();
@@ -76,7 +75,6 @@ export default function HomePage() {
     setError(null);
 
     try {
-      // call all 4 platforms with the SAME keyword
       const [reddit, twitter, instagram, facebook] = await Promise.all([
         searchRedditPosts(k, 100),
         searchTwitter(k, 50),
@@ -86,12 +84,8 @@ export default function HomePage() {
 
       setRedditResults((reddit.results || reddit || []) as RedditPost[]);
       setTwitterResults((twitter.results || []) as TwitterPost[]);
-      setInstagramResults(
-        (instagram.results || []) as InstagramPost[]
-      );
-      setFacebookResults(
-        (facebook.results || []) as FacebookPost[]
-      );
+      setInstagramResults((instagram.results || []) as InstagramPost[]);
+      setFacebookResults((facebook.results || []) as FacebookPost[]);
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Something went wrong.");
@@ -128,6 +122,7 @@ export default function HomePage() {
     const draft = replyDrafts[post.id]?.trim();
     if (!draft) return;
 
+    // For now we just log + mark as saved (dashboard-style)
     console.log("Submitted reply for Reddit post", {
       postId: post.id,
       subreddit: post.subreddit,
@@ -147,7 +142,7 @@ export default function HomePage() {
       <p style={{ marginBottom: "1rem" }}>
         Enter a keyword like <strong>“microdosing”</strong>,{" "}
         <strong>“psilocybin”</strong>, or <strong>“magic mushrooms”</strong> to
-        search Reddit (and Twitter / Instagram / Facebook), then draft
+        search Reddit (and demo Twitter / Instagram / Facebook), then draft
         replies directly in this dashboard.
       </p>
 
@@ -198,7 +193,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Reddit results + reply helper */}
+      {/* REDDIT + reply helper */}
       <section style={{ marginBottom: "2rem" }}>
         <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: 8 }}>
           Reddit Results ({redditResults.length})
@@ -241,6 +236,7 @@ export default function HomePage() {
                       gap: 8,
                     }}
                   >
+                    {/* clickable subreddit link */}
                     <a
                       href={`https://www.reddit.com/r/${post.subreddit}`}
                       target="_blank"
@@ -249,14 +245,13 @@ export default function HomePage() {
                     >
                       r/{post.subreddit}
                     </a>
+
+                    {/* clickable post link */}
                     <a
                       href={redditPostUrl}
                       target="_blank"
                       rel="noreferrer"
-                      style={{
-                        fontSize: "0.75rem",
-                        textDecoration: "underline",
-                      }}
+                      style={{ fontSize: "0.75rem", textDecoration: "underline" }}
                     >
                       View on Reddit
                     </a>
@@ -396,7 +391,7 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* Twitter */}
+      {/* TWITTER */}
       <section style={{ marginBottom: "1.5rem" }}>
         <h3
           style={{
@@ -478,7 +473,7 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* Instagram */}
+      {/* INSTAGRAM */}
       <section style={{ marginBottom: "1.5rem" }}>
         <h3
           style={{
@@ -560,7 +555,7 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* Facebook */}
+      {/* FACEBOOK */}
       <section style={{ marginBottom: "1.5rem" }}>
         <h3
           style={{
